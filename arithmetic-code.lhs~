@@ -1,10 +1,80 @@
-A Turing complete arithmetical calculator.
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{gensymb}
+% Time-stamp: 2015-08-28 06:16:35 pgh
+\title{AMEN: arithmetical calculator}
+\author{Peter Hancock}
+%\date{{\Huge \textbf{DRAFT}} of August 21, 2008}
+\date{\today}
+\input{preamble.tex}
+
+%include polycode.fmt
+%format ^ = "\wedge"
+%format ** = "**"
+%format * = "\times"
+%format :+: = ":\!+\!:"
+%format :^: = ":\!\wedge\!:"
+%format :*: = ":\!\times\!:"
+%format <^> = "\langle\wedge\rangle"
+%format <*> = "\langle\times\rangle"
+%format <+> = "\langle+\rangle"
+%format alpha = "\alpha"
+%format beta = "\beta"
+%format gamma = "\gamma"
+%%format "^" = "\"\wedge\""
+%format LEQ = "\leq" 
+%format <=> = "\iff"
+%format chipmul = "\mathop{\setminus}" 
+%format chopmul = "\mathop{/}"
+%format chipadd = "\mathop{-\!\!<}"
+%format chopadd = "\mathop{>\!\!-}"
+%format <> = "\!\mathop{^\cdot}\!"
+%format b0 = " b_0"
+%format b1 = " b_1"
+%format b2 = " b_2"
+%format bk = "b_k"
+%format bn = " b_n"
+%format k0 = " k_0"
+%format k1 = " k_1"
+%format k2 = " k_2"
+%format kn = " k_n"
+%%format c0 = " c_0"
+%format c1 = " c_1"
+%format c2 = " c_2"
+%format c3 = " c_3"
+%format c4 = " c_4"
+%format c5 = " c_5"
+%format c6 = " c_6"
+%format c7 = " c_7"
+%format c8 = " c_8"
+%format c9 = " c_9"
+%format c9 = " c_9"
+%format c10 = " c_{10}"
+%format cn = " c_n"
+%format CW = " W^C "
+%format Omega = "\Omega"
+%format omega = "\omega"
+%format sum = "\mbox{$\sum$}"
+%format prod = "\mbox{$\prod$}"
+%format STOP = "\hspace{1em}."
+%format COMMA = "\hspace{1em},"
+%%%%%%%%%%%%%%%%%%%%%%%\Usepackage{mathlig}
+\newcommand{\ZERO}{\ensuremath{{\!\mathop{^\cdot}\!}}}
+\newcommand{\curry}{\ensuremath{\mathit{curry}}}
+
+\begin{document}
+\maketitle
+
+\section{The Naperian combinators: $+$, $\times$, $\wedge$, $0$.}
+
+
 
 Some haskell boilerplate. We are going to play around with
 the ordinary arithmetical symbols, and versions of these
 symbols in angle-brackets eg. |<+>|.
 \begin{code} 
-module Arithmetic where 
+module Main where 
 import Data.Char
 import Prelude hiding --
                ((*),(^),(+),(<>)
@@ -14,13 +84,7 @@ infixr 8  ^
 infixr 7  *  
 infixr 6  +  
 infixr 9  <>
-
-main :: IO ()        -- Do something with this later.
-main =  putStrLn
-          "Load in ghci and type something like \"test $ vc :^: vb :^: va :^: cC"  
 \end{code}
-
-\section{The real-world arithmetical combinators}
 
 Here are some simple definitions of binary operations corresponding to the 
 arithmetical combinators: 
@@ -31,8 +95,8 @@ a + b  = \c -> (c ^ a) * (c ^ b)
 a `naught` b = b
 \end{code}
 
-Instead of |naught|, one can use the infix operator |(<>)|, that looks
-a little like a `|0|'. It discards its left argument, and returns its right. 
+Instead of |naught|, I shall use the operator |(<>)|, that looks
+a little like a `|0|'. As an infix operator, it throws away its left argument, and returns its right. 
 \begin{code}
 (<>) = naught
 zero = naught
@@ -49,17 +113,11 @@ one      :: a -> a
 \end{code}
 
 
-The defining equations above generate an equivalence relation between
-(possibly open) terms in a signature with eight operators:
-
-* 4 constants (^), (*), (+) and (<>)
-* 4 binary operators _^_, _*_, _+_ and _<>_
-
-This is the least equivalence relation
+The definitions above generate an equivalence relation between
+(possibly open) terms in a signature: the least equivalence relation
 extending the definitions, congruent to all operators in the signature.  
 This means that equations between open terms can be proved by
 substituting equals for equals.
-
 One can also allow instances of the following ``$\zeta$-rule'' in proving equations.
 \begin{center}
     \begin{tabular}{c} |x ^ a = x ^ b|  $\mbox{}\ruleimplies\mbox{}$ |a = b| \end{tabular}
@@ -68,8 +126,8 @@ with the side condition that |x| is fresh to both |a| and |b|.
 
 The $\zeta$-rule is an expression of `exponentiality':
 two values that behave the same as exponents of a generic base are the very same value.
-I shall call this relation $\zeta$-equality.  Any equation I assert
-should be interpreted as $\zeta$-equations, unless I say otherwise.
+I shall call this relation $\zeta$-equality.  All equations 
+asserted below should be interpreted as $\zeta$-equations.
  
 \section{Arithmetical calculus}
 
@@ -77,7 +135,7 @@ The arithmetical combinators are rather fascinating, but it is
 easy to make mistakes when performing calculations.
 We now write some code to explore on the computer
 the evaluation of arithmetical expressions, built out
-of our four/eight combinators.
+of our four combinators.
 
 First, here is a datatype |E| for arithmetical expressions.  The symbols 
 for the constructors are chosen to suggest their interpretation as
@@ -96,11 +154,11 @@ data E  = V String | E :^: E | E :*: E | E :+: E | E :<>: E
 \end{code}
 
 We can think of these expressions as fancy Lisp S-expressions, with four
-different binary `cons' operations, each with an distinct arithmetical flavour.
-
+different `cons' operations, each with an distinct arithmetical flavour.
+Like Neapolitan ice cream.  
 
 It is convenient to have atomic constants identified by arbitrary strings.
-The constants |"+"|, |"*"|, |"^"|, |"0"| and |"1"| are treated specially.
+The constants |"+"|, |"*"|, |"^"| and "|0|" are treated specially.
 \begin{code}
 (cA,cM,cE,c0,c1) = (V"+",V"*",V"^",V"0",V"1")
 \end{code}
@@ -157,10 +215,9 @@ eval a   = case a of  b1 :+: b2    -> eval b1 <+> eval b2
 
 This first piece of code is an evaluator, that computes the normal form
 of an expression (with respect to some rewriting rules hard-wired in the code)
-if one exists. (Otherwise it will probably hang, or consume all the memory
-in your computer.)
-Such an evaluator may let us see the value an expression has, but it doesn't 
-show how this was arrived at.
+if one exists.
+Such a thing lets us see the value of an expression, but not how it was
+arrived at.
 
 There are various systems and reduction strategies of interest.  They
 arise from the algebraic structure: the additive and multiplicative
@@ -389,12 +446,6 @@ If one wants to investigate reduction sequences of arithmetical
 expressions by running this code, one needs to display them.
 To display expressions, we use the following code,
 which is slightly less noisy than the built in show instance.
-It should supress parentheses with associative operators.
-(I think everything is right associative: as with ^, so
-with the other operators.)
-I write the constant combinators in square brackets, which may
-be considered noisy.
-
 I don't understand precedences very well. I think the following
 deals properly with associativity of |+| and |*|, and their
 relative precedences (sums of products) but
@@ -788,10 +839,9 @@ flip'' = flip' flip' (flip' flip')  (flip' flip')
 \subsection{Continuation transform}
 
 The function |^| which takes |a| to |a ^| pops up everywhere when playing
-with arithmetical combinators.
-It provides the basic means of interchanging the positions
-of variables:
-| a^b = b^(a^) = b^a^(^) |.
+with arithmetical combinators. It provides the basic means of interchanging the positions
+of variables: | a^b = b^(a^) = b^a^(^) |. 
+
 
 On the topic of the continuation transform, for a fixed result type
 |R|, the type-transformer |CT|
@@ -926,17 +976,11 @@ In fact we have forms of definition by finite cases.
 \iffalse
 \subsection{A simple parser}
 
-Is it even worth thinking about this?  The interpreter gives a
-fine language for defining expressions, using let expressions, etc.
-
 Something changed in ghc 7.10.2 making it a fuss to write simple parsers.
 Applicative is bound up with monads, and they have stolen |<*>|. If
 I hide that, I hide monads, and can't use do notation. 
 
 \begin{code}
-
--- PARSERS.
--- t is the token type, v the parsed value. 
 newtype Parser t v =  Parser {prun :: [t] -> [(v,[t])]}
 
 
@@ -947,17 +991,9 @@ sat p  = Parser f where f (t:ts)  =   if p t then [(t,ts)] else []
 lit :: Eq t => t -> Parser t t
 lit t  = sat (== t)
 
--- composes a sequence of N parsers that return things of the same type A
--- into a parser that returns a list in A* of length N. 
 fby :: Parser t a -> Parser t [a] -> Parser t [a] 
 fby p q 
   = Parser (\s-> [((v:vs),s'') | (v,s') <- prun p s, (vs,s'') <- prun q s' ])
-
-fby2 :: Parser t a -> Parser t b -> (a -> b -> c) -> Parser t c
-fby2 p q f
-  = Parser (\s->
-              [ (f v v',s'')  | (v,s') <- prun p s
-                              , (v',s'') <- prun q s' ])
 
 grdl :: Parser t a -> Parser t b -> Parser t b
 grdr :: Parser t a -> Parser t b -> Parser t a
@@ -965,10 +1001,6 @@ grdl p q
   = Parser (\s-> [ (b,s'') | (_,s') <- prun p s, (b,s'') <- prun q s' ])
 grdr p q 
   = Parser (\s-> [ (a,s'') | (a,s') <- prun p s, (_,s'') <- prun q s' ])
-paren p 
-  = Parser (\s-> [ (a,s''') | (_,s')   <- prun (lit Lpar) s
-                            , (a,s'')  <- prun p s'
-                            , (_,s''') <- prun (lit Rpar) s''])
 
 
 alt :: Parser t a -> Parser t a -> Parser t a
@@ -987,9 +1019,8 @@ rep1 p = p `fby` rep p
 repsep :: Parser t a -> Parser t b -> Parser t [a]
 repsep p sep = p `fby` rep (sep `grdl` p)
 
-
--- SCANNER.
--- turns a stream of characters into a stream of tokens.
+-- token parsing
+paren p = ((lit Lpar `grdl` p) `grdr` lit Lpar )
 
 -- import Data.Char
 
@@ -1000,7 +1031,7 @@ is_space      c = c == ' '
 is_par        c = c `elem` "()"
 is_symch      c = not (is_par c || is_space c)
 
-data Tok = Id String | Num Int |
+data Tok = Id String | -- Num Int |
            Sym String | Lpar | Rpar
            deriving (Show,Eq)
 tokens :: String -> [Tok]
@@ -1020,74 +1051,61 @@ tokens (c:cs) -- | is_symch c
                 id_t b [] = [Sym (b [])]
                 id_t b (c:cs) | is_symch c = id_t (b . (c :)) cs
                 id_t b inp               = Sym (b []): tokens inp 
-
-{- damn it! I have pinched * and + for a more general purpose.
+{-
 tokens (inp@(c:cs)) | is_digit c
           = id_t (vd c) cs where
                 id_t b [] = [Num b]
                 id_t b (c:cs) | is_digit c = id_t (b * 10 + ord c) cs
-                id_t b inp               = Num b : tokens inp
+                id_t b (c:cs)               = Id (b []): tokens inp
                 vd = digitToInt
 -}
 
-
--- GRAMMAR
-
+-- optspace = rep (sat is_space)
 variable :: Parser Tok E
 variable = Parser p where
             p (Id st : ts) = [(V st,ts)]
             p _            = []
 
-constant :: Parser Tok E
-constant = Parser p where
-            p (Sym st : ts) = [(V st,ts)]
-            p _            = []
+{-
+variable = grdl optspace (
+           Parser (\s-> [ (V (c:cs),s'') 
+                        | (c,s') <- prun (sat is_alphabetic) s
+                        , (cs,s'') <- prun (rep (sat is_idchar)) s' ]))
+constant = grdl optspace (
+           Parser (\s-> [ (V cs,s') 
+                        | (cs,s') <- prun (rep1 (sat is_digit) ) s  ]))
+-}
 
+{-
 atomic         = variable `alt` constant `alt` paren expression
-additive       = Parser (\s-> [ (fo (:+:) x xs ,s')
-                              | ((x:xs),s') <-
-                                   prun (repsep multiplicative (lit (Sym "+"))) s ])
-multiplicative = Parser (\s-> [ (fo (:*:) x xs ,s')
-                              | ((x:xs),s') <-
-                                   prun (repsep exponential (lit (Sym "*"))) s ])
-exponential    = Parser (\s-> [ (fo (:^:) x xs ,s')
-                              | ((x:xs),s') <-
-                                   prun (repsep atomic (lit (Sym "^"))) s ])
+additive       = Parser (\s-> [ (fo (:+:) x xs ,s') | ((x:xs),s') <- prun (repsep multiplicative (lit '+')) s ])
+multiplicative = Parser (\s-> [ (fo (:*:) x xs ,s') | ((x:xs),s') <- prun (repsep exponential (lit '*')) s ])
+exponential    = Parser (\s-> [ (fo (:^:) x xs ,s') | ((x:xs),s') <- prun (repsep atomic (lit '^')) s ])
+-- do  (x:xs) <- repsep multiplicative (lit '+') ; return (fo (:+:) x xs) 
+-- multiplicative = do  (x:xs) <- repsep exponential    (lit '*') ; return (fo (:*:) x xs) 
+-- exponential    = do  (x:xs) <- repsep atomic         (lit '^') ; return (fo (:^:) x xs) 
 expression     = additive
 
 -- foldr1 ? 
 fo op fst [] = fst
 fo op fst (x:xs) = fst `op` fo op x xs 
 
--- instance Read E where
---  readsPrec d = prun expression . tokens
-
+instance Read E where
+  readsPrec d r = prun expression r 
+-}
 \end{code}
 
 
-Some terms to explore:
+\subsection{For a talk in Chamb{\'e}ry}
 \begin{code}
-
-demo1Add     = let d = va :+: vb
-               in vc :^: d
-demo1Zero    = let d = V"0" in va :^: d 
-demo1Mul     = let d = va :*: vb in vc :^: d
-demo1One     = let d = V"1" in va :^: d
-
--- show that the logarithm of an exponential behaves as expected
-demoExp     = let d = (va :^: cPair) :*: (vb :^: V"^")
-              in vc :^: d
-demoExp'    = let d = (va :*: cPair) :+: (vb :*: V"^")
-              in vd :^: vc :^: d
-
--- two equivalent codings                 
+demoMul     = let d = va :+: vb in d
+demoOne     = let d = V"0" in d 
+demoExp     = let d = (va :^: cPair) :*: (vb :^: V"^") in d
+demoExp'    = let d = (va :*: cPair) :+: (vb :*: V"^") in d
 demoAdd     = let c = (va :^: V"^") :+: (vb :^: V"^") 
-                  d = cPair :*: V"*" :*: (c :^: V"^")
-              in ve :^: vd :^: vc :^: d
+                  d = cPair :*: V"*" :*: (c :^: V"^") in d
 demoAdd'    = let c = (va :^: V"^") :+: (vb :^: V"^")
-                  d = cPair :+: (c :^: cK)
-              in ve :^: vd :^: vc :^: d
-
+                  d = cPair :+: (c :^: cK) in d
 demoNaught  = let d = V"0" :*: V"0" :^: V"^" in d
 \end{code}
 \iffalse
