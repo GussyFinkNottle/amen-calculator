@@ -10,10 +10,10 @@ import Prelude hiding --
                ((*),(^),(+),(<>)
                ,(<*>),(<^>),(<+>),(<<>>)
                ,(:^:),(:*:),(:+:),(:<>:))
-infixr 8  ^ 
-infixr 7  *  
-infixr 6  +  
-infixr 9  <>
+infixr 8  ^   -- flip ($)
+infixr 7  *   -- flip (.)
+infixr 6  +   -- flip (lift (.)), lift o a b = \ x -> o (a x) (b x) 
+infixr 9  <>  -- flip const 
 
 main :: IO ()        -- Do something with this later.
 main =  putStrLn
