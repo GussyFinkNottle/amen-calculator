@@ -833,16 +833,14 @@ f `join` s = f (return s)     -- ie. |join = ((^)*)|
 TODO: Is this for real?
 The bind operator |>>=| is not quite as simple.
 \begin{spec}
- m >>= f = m . (f^C)
-         = (f^C) * m 
-         = (^) * (f*) * m
- (>>=)^C f m = (^) * (f*) * m
- (>>=)^C f   = ((^)*) . ((f*)*)
-             = ((f*)*) * ((^)*)
- f^((>>=)^C) = ((f^(*))^(*) * (^)^(*)
- (>>=)^C     = (*)*(*)*(((^)^(*))^B)
- (>>=)^C     = (*)*(*)*(^)^((*)*B)
- (>>=)       = ((*)*(*)*(^)^((*)*B))^C
+ (m >>= f) s  = m (f^C . s)
+ (m >>= f)    = (f^C) * m 
+              = (^) * (f*) * m
+ (>>=)^C f m  = (^) * (f*) * m
+ (>>=)^C f    = ((^)*) . ((f*)*)
+              = ((f*)*) * ((^)*)
+ f^((>>=)^C)  = (f^(*))^(*) * (^)^(*)
+ f^((>>=)^C)  = f^((*)*(*)) * (^)^(*)
 \end{spec}
 
 You may interested to see what |callCC| looks like.  That's
