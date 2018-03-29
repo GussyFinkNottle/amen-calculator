@@ -1,23 +1,35 @@
-A Turing complete arithmetical calculator.
+\documentclass{article}
+%include polycode.fmt
+%lhs2TeX.fmt
+%format ^ = "\wedge"
+%format * = "\times"
+%format <> = "\!\mathop{{}^{{}^{\cdot}}}\!"
 
+
+\title{A Turing complete arithmetical calculator}
+
+\begin{document}
+\maketitle 
 Some haskell boilerplate. We are going to play around with
 the ordinary arithmetical symbols, and versions of these
 symbols in angle-brackets eg. |<+>|.
+
 \begin{code} 
 module Arithmetic where 
 import Data.Char
-import Prelude hiding --
+import Prelude hiding 
                ((*),(^),(+),(<>)
                ,(<*>),(<^>),(<+>),(<<>>)
                ,(:^:),(:*:),(:+:),(:<>:))
-infixr 8  ^   -- flip ($)
-infixr 7  *   -- flip (.)
-infixr 6  +   -- flip (lift (.)), lift o a b = \ x -> o (a x) (b x) 
-infixr 9  <>  -- flip const 
+infixr 8  ^   
+infixr 7  *   
+infixr 6  +   
+infixr 9  <>  
 
 main :: IO ()        -- Do something with this later.
-main =  putStrLn
-          "Load in ghci and type something like \"test $ vc :^: vb :^: va :^: cC"  
+main =  let eg = " test $ vc :^: vb :^: va :^: cC "
+        in putStrLn
+             ("Load in ghci and type something like: " ++ eg)
 \end{code}
 
 \section{The real-world arithmetical combinators}
@@ -48,12 +60,15 @@ The type-schemes inferred for the definitions are as follows:
 one      :: a -> a
 \end{code}
 
+\section{a syntactical view}
 
 The defining equations above generate an equivalence relation between
 (possibly open) terms in a signature with eight operators:
 
-* 4 constants (^), (*), (+) and (<>)
-* 4 binary operators _^_, _*_, _+_ and _<>_
+\begin{itemize}
+\item 4 constants |(^)|, |(*)|, |(+)| and |(<>)|
+\item 4 binary operators |_^_|, |_*_|, |_+_| and |_<>_|
+\end{itemize}
 
 This is the least equivalence relation
 extending the definitions, congruent to all operators in the signature.  
@@ -62,16 +77,23 @@ substituting equals for equals.
 
 One can also allow instances of the following ``$\zeta$-rule'' in proving equations.
 \begin{center}
-    \begin{tabular}{c} |x ^ a = x ^ b|  $\mbox{}\ruleimplies\mbox{}$ |a = b| \end{tabular}
+    \begin{tabular}{c} |x ^ a = x ^ b|  $\mbox{}\Longrightarrow\mbox{}$ |a = b| \end{tabular}
 \end{center}
 with the side condition that |x| is fresh to both |a| and |b|.
 
-The $\zeta$-rule is an expression of `exponentiality':
-two values that behave the same as exponents of a generic base are the very same value.
-I shall call this relation $\zeta$-equality.  Any equation I assert
+The $\zeta$-rule is a cancellation law. It expresses
+`exponentiality':
+two expressions that behave the same as exponents of a generic base
+(as it were, a cardboard-cutout of a base) are equivalent. 
+I shall call this equivalence relation $\zeta$-equality.  Any equation I assert
 should be interpreted as $\zeta$-equations, unless I say otherwise.
- 
-\section{Arithmetical calculus}
+
+It may be that to determine the behaviour of an expression as an
+exponent, we have to supply it with more than one base-variable.
+Sometimes, "extra" variables play a role in allowing computations
+to proceed, and subsequently can be cancelled.
+  
+\section{Evaluating arithmetical expressions}
 
 The arithmetical combinators are rather fascinating, but it is
 easy to make mistakes when performing calculations.
@@ -156,11 +178,10 @@ eval a   = case a of  b1 :+: b2    -> eval b1 <+> eval b2
 
 
 This first piece of code is an evaluator, that computes the normal form
-of an expression (with respect to some rewriting rules hard-wired in the code)
-if one exists. (Otherwise it will probably hang, or consume all the memory
-in your computer.)
-Such an evaluator may let us see the value an expression has, but it doesn't 
-show how this was arrived at.
+of an expression (with respect to some rewriting rules hard-wired in the code),
+unless it "hangs", or consumes all the memory in your computer.)
+Such an evaluator may let look at the normal form of an expression, if it has one.
+but it doesn't show how this was arrived at. (This is done below.)
 
 There are various systems and reduction strategies of interest.  They
 arise from the algebraic structure: the additive and multiplicative
@@ -191,19 +212,19 @@ tlr e = case e of
              (a :+: (b :+: c))   ->  [ (a :+: b) :+: c         ] -- space reuse
              (V "0" :+: a)       ->  [ a                       ] -- drop1
              (a :+: V "0")       ->  [ a                       ] -- drop1
-             (a :*: (b :+: c))   ->  [ (a :*: b) :+: (a :*: c) ] -- 2 -> 3
+             (a :*: (b :+: c))   ->  [ (a :*: b) :+: (a :*: c) ] -- 2 to 3
              (a :*: V "0")       ->  [ c0                      ] -- drop1
              (a :*: (b :*: c))   ->  [ (a :*: b) :*: c         ] -- reuse
              (V "1" :*: a)       ->  [ a                       ] -- drop1
              (a :*: V "1")       ->  [ a                       ] -- drop1
-             (a :^: (b :+: c))   ->  [ (a :^: b) :*: (a :^: c) ] -- 2 -> 3
+             (a :^: (b :+: c))   ->  [ (a :^: b) :*: (a :^: c) ] -- 2 to 3
              (a :^: V "0")       ->  [ c1                      ] -- drop1
              (a :^: (b :*: c))   ->  [ (a :^: b) :^: c         ] -- reuse
              (a :^: V "1")       ->  [ a                       ] -- drop1
              (a :^: b :^: V "+") ->  [ b :+: a                 ] -- drop1
              (a :^: b :^: V "*") ->  [ b :*: a                 ] -- drop1
              (a :^: b :^: V "^") ->  [ b :^: a                 ] -- drop1
-             (a :^: b :^: V "0") ->  [ b :<>: a                ] -- drop2  b :<>: a
+             (a :^: b :^: V "0") ->  [ b :<>: a                ] -- drop1
              (a :<>: b)          ->  [ b                       ] -- drop1
              _                   ->  [                         ]
 \end{code}
@@ -255,7 +276,8 @@ reducts a     = [ f a'' | (f,a') <- sites a, a'' <- tlr a' ]
 \subsection{holding reduction sequences in a tree}
 
 We need a structure to hold the reduction sequences from an
-expression.  So-called `rose' trees , labelled by expressions seem ideal.
+expression.  So-called `rose' trees, with nodes labelled with
+expressions seem ideal.
 
 \begin{code}
 data Tree a = Node a [ Tree a ] deriving Show
@@ -287,7 +309,7 @@ rss = branches . reductTree
 
 Usually it is the first `canonical' reduction sequence of interest.
 
-\end{document}
+
 
 \section{B{\"o}hm's logarithms}
 
@@ -372,7 +394,7 @@ c2, c3, c4 , c5, c6, c7, c8, c9, c10 :: E
 c2       = c1      :+: c1
 c3       = c2      :+: c1 
 c4       = c2      :^: c2
-c5       = c2      :+: c3
+c5       = c3      :+: c2
 c6       = c3      :*: c2
 c7       = c3      :+: c4
 c8       = c2      :^: c3
@@ -390,7 +412,7 @@ expressions by running this code, one needs to display them.
 To display expressions, we use the following code,
 which is slightly less noisy than the built in show instance.
 It should supress parentheses with associative operators.
-(I think everything is right associative: as with ^, so
+(I think everything is right associative: as with |^|, so
 with the other operators.)
 I write the constant combinators in square brackets, which may
 be considered noisy.
@@ -469,7 +491,10 @@ commalist c (x:(xs'@(_:_))) = x:c:commalist c xs'
 commalist c xs = xs
 \end{code}
 
+Remove duplicates from a list. The order in which entries are
+first encountered is preserved in the output. 
 \begin{code}
+nodups :: Eq a => [a] -> [a] 
 nodups [] = []
 nodups (x:xs) = x : nodups (filter (/= x) xs)
 \end{code}
@@ -539,8 +564,6 @@ nf = map last . rss
 fd :: [E] -> Maybe (E,[E])   -- first difference
 fd [] = Nothing
 fd [x] = Nothing
--- fd (x:xs) = let e = [t | t <- xs, t /= x]
---            in if e == [] then Nothing else Just (x,e)
 fd (x:xs@(y:_)) | x == y = fd xs
 fd (x:xs@(y:_)) | x /= y = Just (x, xs)
 
@@ -1015,20 +1038,12 @@ tokens (c:cs) | is_alphabetic c
                 id_t b [] = [Id (b [])]
                 id_t b (c:cs) | is_idchar c = id_t (b . (c :)) cs
                 id_t b inp         = Id (b []): tokens inp 
-tokens (c:cs) -- | is_symch c 
+tokens (c:cs) 
           = id_t (c:) cs where
                 id_t b [] = [Sym (b [])]
                 id_t b (c:cs) | is_symch c = id_t (b . (c :)) cs
                 id_t b inp               = Sym (b []): tokens inp 
 
-{- damn it! I have pinched * and + for a more general purpose.
-tokens (inp@(c:cs)) | is_digit c
-          = id_t (vd c) cs where
-                id_t b [] = [Num b]
-                id_t b (c:cs) | is_digit c = id_t (b * 10 + ord c) cs
-                id_t b inp               = Num b : tokens inp
-                vd = digitToInt
--}
 
 
 -- GRAMMAR
@@ -1055,6 +1070,13 @@ exponential    = Parser (\s-> [ (fo (:^:) x xs ,s')
                                    prun (repsep atomic (lit (Sym "^"))) s ])
 expression     = additive
 
+discard        = Parser (\s-> [ (fo (:<>:) x xs ,s')
+                              | ((x:xs),s') <-
+                                   prun (repsep atomic
+                                           ((lit (Sym "!"))
+                                            `alt` lit (Sym "<>"))) s
+                              ])
+
 -- foldr1 ? 
 fo op fst [] = fst
 fo op fst (x:xs) = fst `op` fo op x xs 
@@ -1062,6 +1084,8 @@ fo op fst (x:xs) = fst `op` fo op x xs
 -- instance Read E where
 --  readsPrec d = prun expression . tokens
 
+rdexp :: String -> E
+rdexp = fst . hd . prun expression . tokens
 \end{code}
 
 
