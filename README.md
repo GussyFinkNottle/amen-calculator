@@ -1,4 +1,4 @@
-# amen-calculator
+# amen-calculator #
 A program to perform and display calculations with arithmetical combinators, based 
 on arithmetic the arithmetic (addition, multiplication, exponentiation
 and nought) of Church numerals.
@@ -12,7 +12,7 @@ These "AMEN" combinators are combinatorially complete, ie. define the same numer
 \lambda-calculus. They satisfy interesting algebraic laws, slightly weaker than the
 arithmetic of the same operations on transfinite ordinals (except 1^a = 1 and 0*a = 0.)
 One can take them as a basis for Turing-complete computation. 
-An (bracket-)abstraction operation is defined, based on "logarithmic" ideas 
+A (bracket-)abstraction operation is defined, based on "logarithmic" ideas 
 due to Boehm. 
 
 The program evaluates arithmetical expressions built out of the 4 constants
@@ -21,15 +21,39 @@ according to computationally oriented
 algebraic equations. Crucially, we can examine the reduction sequences, and assess
 expressions for \zeta-equality. 
 
-The program is best run from ghci. The most useful function is called "test"
-that takes an expression as argument, and prints a representation of the first reduction sequence
-in a certain order. The expression to be tested is assembled in a certain syntax
-represented in haskell: binary operators `:+:, :*:, :^:, :!:` and unary constants
-`V"+", V"*", V"^", V"0"`, and variables; ghci is useful for building expressions making use of
-let-expressions. A rudimentary parser from strings is also available. 
+The program is best run from ghci, as in
 
-Various  combinators are defined, for example the standard combinator-sets IBCKW
-and SKI (also combinatorially complete). But there are also pairing combinators and 
-their projections, combinators related to currying, permutation of
+>  $ ghci amen-calulator/arithmetic-code.lhs
+
+The most useful function is called `test`. It
+takes an expression as argument, and prints a representation of its first reduction sequence
+in a certain order. The expression to be tested can be assembled in
+the syntax:
+
+* binary infix operators `:+:, :*:, :^:, :!:`,
+
+* unary constants `V"+", V"*", V"^", V"0"`, and
+
+* variables `va, vb, ...`, given by alphabetical strings.
+
+In ghci one can build up expressions making use of
+let-expressions. A rudimentary parser from strings is also available.
+Something like
+
+
+>   let (e,res):_ = prun expression (tokens "eg ^ eggs")
+>   in test $ va :^: blog "eg" e
+
+
+should either
+
+* complain of a parse error, or
+
+* construct the indicated expression (using Boehm's logarithm inbuilt as `blog`) and show its first reduction sequence.
+
+Various  combinators are defined, for example the standard combinator-sets **IBCKW**
+and **SKI** (also combinatorially complete). But there are also
+combinators for pairing, currying, and 
+projection, combinators related to currying, permutation of
 arguments, fixed points, the continuation monad, and lots more.
 You have to browse the the code to find these.
