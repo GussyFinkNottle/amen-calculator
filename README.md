@@ -30,7 +30,7 @@ takes an expression as argument, and prints a representation of its first reduct
 in a certain order. The expression to be tested can be assembled in
 the syntax:
 
-* binary infix operators `:+:, :*:, :^:, :!:`,
+* binary infix operators `:+:, :*:, :^:, :<>:`,
 
 * unary constants `V"+", V"*", V"^", V"0"`, and
 
