@@ -826,11 +826,10 @@ of this monad have simple arithmetical expressions.
 \begin{spec}
 return :: a -> CT a
 join   :: CT (CT a) -> CT a
-return a b = a ^ b       -- ie. |return = (^)|
+return a b = a ^ b            -- ie. |return = (^)|
 f `join` s = f (return s)     -- ie. |join = ((^)*)|
 \end{spec}
 
-TODO: Is this for real?
 The bind operator |>>=| is not quite as simple.
 \begin{spec}
  (m >>= f) s  = m (f^C . s)
@@ -845,8 +844,22 @@ The bind operator |>>=| is not quite as simple.
 
 You may interested to see what |callCC| looks like.  That's
 the function whose type is the Kleislified version of 
-Peirce's law:  |((a -> CT b) -> CT a) -> CT a|. Unless I'm
-missing something, it is not very beguiling:
+Peirce's law:  |((a -> CT b) -> CT a) -> CT a|.
+
+Peirce's law: | ((a->b) -> a) -> a |
+is interesting because it is involves only
+the arrow, but when |0| and hence negation is
+added, it implies classical logic in both the
+form |~~A = A|, and the form |~A or A|.
+The supposition that it is false leads to an absurdity.
+| ~Peirce = ~a & ((a->b)->a) => ~a & ~(a->b) = ~a & ~b & a |
+
+We cannot hope to prove Pierce's law, but we can expect to
+prove it's continuation transform |((a -> CT b) -> CT a) -> CT a|,
+in which all the arrows |a -> b| have been turned into Kleisli arrows
+|a -> CT b|. 
+
+Unless I'm missing something, or mistaken, |callCC| is not very beguiling:
 \begin{spec}
 (((*) * ((^) * 0 ^ (*)) ^ (^)) ^ (*) * (^)) * ((^) + (^)) ^ (*)
 \end{spec}
@@ -856,7 +869,13 @@ The monadic apparatus can be encoded as follows
 \begin{code}
 ct         :: E -> E
 ct a       = a :^: V "^"                     -- unit
+cb         :: E -> E -> E
 cb m f     = V "^" :*: (f :^: V "*") :*: m  -- bind
+cCTbind    :: E                             
+cCTbind    = blog "m" (blog "f" (cb (V"m") (V"f")))
+cCTjoin, cCTret :: E
+cCTret     = V"^"
+cCTjoin    = cCTret :^: V"*"
 \end{code}
 
 
@@ -887,7 +906,7 @@ Using the combinators of this paper, one can derive
 \begin{spec}
    n b    = b (<>) * b 1 * ... * b (n-2) * b (n-1) 
           = b^((<>)^) * b^(1^) * ... * b^((n-2)^) * b^((n-1)^) 
-          = b^(((<>)^) + (1^) + ... + ((n-2)^) + ((n-1)^) 
+          = b^(((<>)^) + (1^) + ... + ((n-2)^) + ((n-1)^)) 
 \end{spec}
 
 By exponentiality ($\zeta$), 
@@ -906,19 +925,33 @@ In fact, if |Osucc| is Oleg's successor, we have | Osucc n = n + (n^) |.
   ...
 \end{spec}
 
+
 One may be reminded here of von-Neumann's representation for ordinals, which has $n \mapsto n \cup \{n\}$.for its successor operation,
 and the empty set $\{\}$ for its origin.
-\begin{spec}
-  0  = {}
-  1  = {{}}
-  2  = {{},{{}}}
-  3  = {{},{{}},{{},{{}}}}
-  ...
-\end{spec}
+\[
+\newcommand{\MT}{\{\}}
+\newcommand{\B}[1]{\{#1\}}
+\begin{array}{rcl}
+  0  &=& \MT            \\
+  1  &=& \B{\MT}\\
+  2  &=& \B{\MT,\B{\MT}}\\
+  3  &=& \B{\MT,\B{\MT},\B{\MT,\B{\MT}}}\\
+  && ...
+\end{array}
+\]
 Clearly the operation of raising to the power of exponentiation (that
 takes |n| to |(n^)|) plays the role of the singleton operation  $n \mapsto \{n\}$.
 
+\begin{code}
+cOsuc :: E -> E
+cOsuc e = e :+: (e :^: V"^")
 
+cOzero :: E
+cOzero = V"0"
+
+cO :: Int -> E
+cO n = let x = cOzero : [cOsuc t | t <- x ] in x !! n 
+\end{code}
 \subsection{sgbar}
 
 
