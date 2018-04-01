@@ -41,15 +41,17 @@ let-expressions. A rudimentary parser from strings is also available.
 Something like
 
 
->   let (e,res):_ = prun expression (tokens "eg ^ eggs")
->   in test $ va :^: blog "eg" e
+>   let (e,res):_ = prun expression (tokens "eg ^ (eggs + bacon)")
+>   in test $ vb :^: va :^: blog "eg" e
 
 
 should either
 
 * complain of a parse error, or
 
-* construct the indicated expression (using Boehm's logarithm inbuilt as `blog`) and show its first reduction sequence.
+* construct the indicated expression
+  (using Boehm's logarithm inbuilt as `blog`)
+  and display its most sensible reduction sequence.
 
 Various  combinators are defined, for example the standard combinator-sets **IBCKW**
 and **SKI** (also combinatorially complete). But there are also

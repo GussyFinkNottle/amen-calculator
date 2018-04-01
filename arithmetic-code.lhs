@@ -432,7 +432,8 @@ showE (V str) _ = (str++)
 showE (a :+: b) p = opp p 0 (showE a 0 . (" + "++) . showE b 0)
 showE (a :*: b) p = opp p 2 (showE a 2 . (" * "++) . showE b 2)
 showE (a :^: b) p = opp p 4 (showE a 5 . (" ^ "++) . showE b 4)
-showE (a :<>: b) p = opp p 4 (showE a 5 . (" ! "++) . showE b 4)
+-- because the below is a wierd operator, I make it noisy.
+showE (a :<>: b) p = opp p 4 (showE a 5 . (" <!> "++) . showE b 4)
 parenthesize f = showString"(" . f . showString")"
 opp p op = if p > op then parenthesize else id 
 \end{code}
