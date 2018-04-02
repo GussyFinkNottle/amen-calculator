@@ -209,24 +209,24 @@ the order of pattern matching might matter.
 \begin{code}
 tlr :: E -> [E]
 tlr e = case e of
-             (a :+: (b :+: c))   ->  [ (a :+: b) :+: c         ] -- space reuse
-             (V "0" :+: a)       ->  [ a                       ] -- drop1
-             (a :+: V "0")       ->  [ a                       ] -- drop1
-             (a :*: (b :+: c))   ->  [ (a :*: b) :+: (a :*: c) ] -- 2 to 3
-             (a :*: V "0")       ->  [ c0                      ] -- drop1
-             (a :*: (b :*: c))   ->  [ (a :*: b) :*: c         ] -- reuse
-             (V "1" :*: a)       ->  [ a                       ] -- drop1
-             (a :*: V "1")       ->  [ a                       ] -- drop1
-             (a :^: (b :+: c))   ->  [ (a :^: b) :*: (a :^: c) ] -- 2 to 3
-             (a :^: V "0")       ->  [ c1                      ] -- drop1
-             (a :^: (b :*: c))   ->  [ (a :^: b) :^: c         ] -- reuse
-             (a :^: V "1")       ->  [ a                       ] -- drop1
-             (a :^: b :^: V "+") ->  [ b :+: a                 ] -- drop1
-             (a :^: b :^: V "*") ->  [ b :*: a                 ] -- drop1
-             (a :^: b :^: V "^") ->  [ b :^: a                 ] -- drop1
-             (a :^: b :^: V "0") ->  [ b :<>: a                ] -- drop1
-             (a :<>: b)          ->  [ b                       ] -- drop1
-             _                   ->  [                         ]
+             (a :+: (b :+: c))    ->  [ (a :+: b) :+: c          ]  --  space reuse
+             (V "0" :+: a)        ->  [ a                        ]  --  drop1
+             (a :+: V "0")        ->  [ a                        ]  --  drop1
+             (a :*: (b :+: c))    ->  [ (a :*: b) :+: (a :*: c)  ]  --  2 to 3
+             (a :*: V "0")        ->  [ c0                       ]  --  drop1
+             (a :*: (b :*: c))    ->  [ (a :*: b) :*: c          ]  --  reuse
+             (V "1" :*: a)        ->  [ a                        ]  --  drop1
+             (a :*: V "1")        ->  [ a                        ]  --  drop1
+             (a :^: (b :+: c))    ->  [ (a :^: b) :*: (a :^: c)  ]  --  2 to 3
+             (a :^: V "0")        ->  [ c1                       ]  --  drop1
+             (a :^: (b :*: c))    ->  [ (a :^: b) :^: c          ]  --  reuse
+             (a :^: V "1")        ->  [ a                        ]  --  drop1
+             (a :^: b :^: V "+")  ->  [ b :+: a                  ]  --  drop1
+             (a :^: b :^: V "*")  ->  [ b :*: a                  ]  --  drop1
+             (a :^: b :^: V "^")  ->  [ b :^: a                  ]  --  drop1
+             (a :^: b :^: V "0")  ->  [ b :<>: a                 ]  --  drop1
+             (a :<>: b)           ->  [ b                        ]  --  drop1
+             _                    ->  [                          ]
 \end{code}
 Thought: the associativity laws can be done in place.
 The distribution laws cannot. Quite a few others can reuse the
@@ -256,12 +256,13 @@ sites e  =  (id,e) : case e of
                        (a :<>: b)  ->  sites b          -- DANGER! indirection
                        _           ->  []               -- no internal sites
             where
-                       h op a b
-                         =  l ++ r where  l  = [ ((a `op`) . f,p) | (f,p) <- sites b ]  -- right operand b first
-                                          r  = [ ((`op` b) . f,p) | (f,p) <- sites a ]
+              h op a b   =  i ++ ii
+                            where
+                              i   =  [ ((a `op`) . f,p) | (f,p) <- sites b ]  -- right operand b first
+                              ii  =  [ ((`op` b) . f,p) | (f,p) <- sites a ]
 \end{code}
-It should be noted that "far-right" sites have priority. This is just a mirror image of the
-normal situation, where the first argument comes first.
+It should be noted that "far-right" sites come first. This is just a mirror image of the
+normal situation, where the far-left argument comes first.
 
 Now we define for any expression a list of the expressions to which it
 reduces in a single, possibly internal step, at exactly one site 
@@ -596,11 +597,11 @@ cW    = V"^" :*: (V"^" :+: V"^") :^: V"*"  -- twice E to the cC
 
 The `real word' versions:
 \begin{code}
-combC = (*) * (^) ^ (*)             -- |flip|, transpose. 
-combB = (^) * (*) ^ (*)             -- |(.)|, composition. |(*) ^ combC| 
-combI = naughtiness ^ (<>)                 -- |id|. also |(^) * (^) ^ (*)|, inter alia
-combK = (^) * (<>) ^ (*)            -- |const|. |(<>) ^ combC|
-combW = (^) * ((^) + (^)) ^ (*)     -- diagonalisation. |((^) + (^)) ^ combC|
+combC        = (*) * (^) ^ (*)             --  |flip|, transpose. 
+combB        = (^) * (*) ^ (*)             --  |(.)|, composition. |(*) ^ combC| 
+combI        = naughtiness ^ (<>)          --  |id|. also |(^) * (^) ^ (*)|, inter alia
+combK        = (^) * (<>) ^ (*)            --  |const|. |(<>) ^ combC|
+combW        = (^) * ((^) + (^)) ^ (*)     --  diagonalisation. |((^) + (^)) ^ combC|
 naughtiness  = error "Naughty!"
 \end{code}
 
@@ -682,7 +683,7 @@ cPair = V"^" :*: V"*" :*: (V"^" :^: V"*")
 Closely related to pairing is the Curry combinator,
 which
 satisfies | f^cCurry x y = f (x , y) |.
-The floowing are alternate versions of this combinator.
+The following are alternate versions of this combinator.
 \begin{code}
 cCurry = cK :*: (cPair :^: V"+")
 cCurry' = cB :*: (cPair :^: cM)
@@ -789,8 +790,13 @@ It can be encoded as follows:
 \begin{code}
 cR, cR'     :: E
 cR          = cC :^: cC 
-cR'         = (V "^") :*: (V "^") :*: (V "*") :^: (V "*")
+cR'         = (V "^") :*: (V "^") :*: (V "*") :^: (V "*")  -- a variant
+
+cL          :: E
+cL          = cPair
 \end{code}
+It has a cousin, that rotates in the other direction.
+This is actually the pairing combinator.
 
 It so happens that the |cC| combinator and the |cR| are each
 definable from the other. 
@@ -825,10 +831,10 @@ On the topic of the continuation transform, for a fixed result type
 is the well known continuation monad.  The unit |return| and multiplication |join| 
 of this monad have simple arithmetical expressions. 
 \begin{spec}
-return :: a -> CT a
-join   :: CT (CT a) -> CT a
-return a b = a ^ b            -- ie. |return = (^)|
-f `join` s = f (return s)     -- ie. |join = ((^)*)|
+return      :: a -> CT a
+join        :: CT (CT a) -> CT a
+return a b  =  a ^ b            -- ie. |return = (^)|
+f `join` s  =  f (return s)     -- ie. |join = ((^)*)|
 \end{spec}
 
 The bind operator |>>=| is not quite as simple.
@@ -851,10 +857,13 @@ Peirce's law: | ((a->b) -> a) -> a |
 is interesting because it is involves only
 the arrow, but when |0| and hence negation is
 added, it implies classical logic in both the
-form |~~A = A|, and the form |~A or A|.
+form |~(~A) = A|, and the form |~A or A|.
 The supposition that it is false leads to an absurdity.
-| ~Peirce = ~a & ((a->b)->a) => ~a & ~(a->b) = ~a & ~b & a |
-
+\begin{spec}
+      ~Peirce   =   ~a & ((a->b)->a)
+                =>  ~a & ~(a->b)
+                =   ~a & ~b & a 
+\end{spec}
 We cannot hope to prove Pierce's law, but we can expect to
 prove it's continuation transform |((a -> CT b) -> CT a) -> CT a|,
 in which all the arrows |a -> b| have been turned into Kleisli arrows

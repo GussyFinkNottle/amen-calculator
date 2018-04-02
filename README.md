@@ -1,6 +1,6 @@
 # amen-calculator #
 A program to perform and display calculations with arithmetical combinators, based 
-on arithmetic the arithmetic (addition, multiplication, exponentiation
+on the arithmetic (addition, multiplication, exponentiation
 and nought) of Church numerals.
 
 You might also use the program to do your shopping, though it lacks
