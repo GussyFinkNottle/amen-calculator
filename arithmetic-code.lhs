@@ -803,6 +803,62 @@ So that |pr ^ W = (^) + (^) = W ^ C|
 
 TODO: code some expressions
 
+\subsection{Fixpoint operators}
+Among endless variations, two fixed-point combinators stand out, Curry's and Turing's.
+Both their fixed point combinators use self application.
+
+This of course banishes us from the realm of combinators that Haskell can type,
+but what the heck. There is syntax for it. We diagonalise exponentiation.
+\begin{code}
+cSap :: E
+cSap = cE :^: cW
+\end{code}
+%
+We call the self application combinator |sap|.
+\begin{spec}
+      sap x = x x = W (^) x = W 1 x 
+  So  sap = (^)^W = 1^W
+\end{spec}
+%Note that the expressions |(^)^W| and |1^W| do not typecheck.
+
+We call Curry's combinator simply $Y_C$.
+\begin{spec}
+    f^Y  = sap (sap * f)
+      Y  = (sap *) * sap 
+         = sap ^ ((*) + 1)
+\end{spec}
+$Y$ can thus be seen as applying
+the successor of multiplication 
+to the value |sap|.
+\begin{code}
+cY_C = cSap :^: cM :^: cSuc 
+\end{code}
+It is time we had an combinator for successor ($[+] \times 1^{[\wedge]}$, by the way). 
+\begin{code}
+cSuc = blog "x" (vx :+: c1)
+\end{code}
+
+Turing's combinator is  |T ^ T| %, \ie{} |T ^ sap|
+where $T x y = y (x x y)$.
+\begin{spec}
+     T x y      = y (x x y) = y (sap x y) = y ((sap^C) y x) 
+     (T^C) y x  = y ((sap^C) y x) = (y . (sap^C) y) x 
+     (T^C) y    = ((sap^C) y) * y 
+     (T^C)      = (sap^C) + 1
+     T          = ((sap^C) + 1)^C
+                = sap ^ ( C * (+1) * C ) 
+\end{spec}
+$T$ can thus be seen as applying a kind of dual (with respect to the involution |C|) of the 
+successor operator to the value |sap|.
+
+Some expressions for the successor operation ,
+Turing's semi-Y, and his Y.
+\begin{code}
+cT   = cSap :^: (cC :*: cSuc :*: cC)
+cY_T = cT :^: cSap
+\end{code}
+
+Be careful when evaluating these things!
 
 \subsection{Rotation combinators}
 
