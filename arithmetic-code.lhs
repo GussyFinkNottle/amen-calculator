@@ -20,7 +20,9 @@ import Data.Char
 import Prelude hiding 
                ((*),(^),(+),(<>)
                ,(<*>),(<^>),(<+>),(<<>>)
-               ,(:^:),(:*:),(:+:),(:<>:))
+               ,(:^:),(:*:),(:+:),(:<>:)
+               ,pi
+               )
 infixr 8  ^   
 infixr 7  *   
 infixr 6  +   
@@ -49,6 +51,16 @@ a little like a `|0|'. It discards its left argument, and returns its right.
 (<>) = naught
 zero = naught
 one  = zero ^ zero
+suc n s =  n s * s
+two  = suc one 
+three = suc two
+four = two ^ two
+five = two + three 
+six  = two * three
+seven = four + three
+eight = two ^ three
+nine = three ^ two
+ten  = two * five
 \end{code}
 
 The type-schemes inferred for the definitions are as follows:
@@ -59,6 +71,34 @@ The type-schemes inferred for the definitions are as follows:
 (<>)     :: a -> b -> b
 one      :: a -> a
 \end{code}
+
+For infinitary operations, I need these
+\begin{code}
+pfs :: (a -> a -> a) -> a -> [a] -> [[a]]
+pfs op ze xs = [ b ze | (b,_) <- pfs' xs id]
+               where pfs' (x:xs) b = pfs' xs (b . (op x))
+
+pi    :: [a -> a] -> [[a -> a]]
+sigma :: [a -> b -> b] -> [[a -> b -> b]]
+pi    = pfs (*) one
+sigma = pfs (+) zero
+
+index :: (([a] -> [a]) -> [a] -> [a]) -> [a] -> a
+index n         = n tail * head
+index' n        = (tail ^ n) * head
+index''         = (* head) . (tail ^) 
+index'''        = (tail ^) * (* head)
+index'''' n     = mydrop n * head
+index'''''      = mydrop * (* head)
+
+mydrop :: (([a] -> [a]) -> b) -> b
+mydrop n  = n tail
+mydrop'   = ($ tail)
+\end{code}
+|pfs| is applied only to streams, and returns a stream.
+Think of it is a stream of finite lists, namely the list of finite
+prefixes of a stream. Then we fold an operation over each list, starting
+with a constant. 
 
 \section{a syntactical view}
 
@@ -113,7 +153,13 @@ infixr 6  :+:
 \end{code}
 
 \begin{code}
-data E  = V String | E :^: E | E :*: E | E :+: E | E :<>: E 
+data E  = V String
+          | E :^: E
+          | E :*: E
+          | E :+: E
+          | E :<>: E
+          | E :~: E         -- flip
+          | E :&: E         -- pairing
           deriving  (Eq) -- (Show,Eq) 
 \end{code}
 
@@ -122,9 +168,9 @@ different binary `cons' operations, each with an distinct arithmetical flavour.
 
 
 It is convenient to have atomic constants identified by arbitrary strings.
-The constants |"+"|, |"*"|, |"^"|, |"0"| and |"1"| are treated specially.
+The constants |"+"|, |"*"|, |"^"|, |"0"|, |"1"| are treated specially.
 \begin{code}
-(cA,cM,cE,c0,c1) = (V"+",V"*",V"^",V"0",V"1")
+(cA,cM,cE,c0,c1,cC',cPair',c0') = (V"+",V"*",V"^",V"0",V"1",V"~",V"&",V"<>")
 \end{code}
 
 For each arithmetical operator, we define a function that takes two
@@ -220,11 +266,15 @@ tlr e = case e of
              (a :^: (b :+: c))    ->  [ (a :^: b) :*: (a :^: c)  ]  --  2 to 3
              (a :^: V "0")        ->  [ c1                       ]  --  drop1
              (a :^: (b :*: c))    ->  [ (a :^: b) :^: c          ]  --  reuse
-             (a :^: V "1")        ->  [ a                        ]  --  drop1
+             (a :^: V "1")        ->  [ a                        ]  --  drop1   -- idle
              (a :^: b :^: V "+")  ->  [ b :+: a                  ]  --  drop1
              (a :^: b :^: V "*")  ->  [ b :*: a                  ]  --  drop1
-             (a :^: b :^: V "^")  ->  [ b :^: a                  ]  --  drop1
-             (a :^: b :^: V "0")  ->  [ b :<>: a                 ]  --  drop1
+             (a :^: b :^: V "^")  ->  [ b :^: a                  ]  --  drop1   -- top 2 swap
+             (a :^: b :^: V "0")  ->  [ b :<>: a                 ]  --  drop1   -- indirection
+             (a :^: b :^: V "~")  ->  [ b :~: a                  ]  -- 
+             (a :^: b :^: V "&")  ->  [ b :&: a                  ]  -- 
+             (a :^: (b :&: c))    ->  [ c :^: b :^: a            ]  -- a permutation/swap
+             (a :^: (b :~: c))    ->  [ c :^: a :^: b            ]  -- another permutation/swap
              (a :<>: b)           ->  [ b                        ]  --  drop1
              _                    ->  [                          ]
 \end{code}
@@ -261,7 +311,7 @@ sites e  =  (id,e) : case e of
                               i   =  [ ((a `op`) . f,p) | (f,p) <- sites b ]  -- right operand b first
                               ii  =  [ ((`op` b) . f,p) | (f,p) <- sites a ]
 \end{code}
-It should be noted that "far-right" sites come first. This is just a mirror image of the
+It should be noted that `far-right' sites come first. This is just a mirror image of the
 normal situation, where the far-left argument comes first.
 
 Now we define for any expression a list of the expressions to which it
@@ -301,31 +351,32 @@ branches (Node a []) = [ [a] ]
 branches (Node a ts) = [ a : b | t <- ts, b <- branches t]
 \end{code}
 
-Putting things together, we can map an expression to its
-a sequence of its reduction sequences. 
+Putting things together, we can map an expression to 
+a sequence of its reduction sequences. (Hence |rss|.)
 \begin{code}
 rss :: E -> [[E]]
 rss = branches . reductTree
 \end{code}
 
-Usually it is the first `canonical' reduction sequence of interest.
+The first `canonical' reduction sequence in my enumeration seems
+usually to be the one that interest me. 
 
 
 
-\section{B{\"o}hm's logarithms}
+\section{B{\"o}hm's logarythms}
 
-This code is concerned generating the logarithm of an expression
+This code generating the logarythm of an expression
 with respect to a variable name.
 
 B{\"o}hm's combinators
 \begin{code}
 cBohmA a b = let g = a :^: V"^" :+: b :^: V"^" in 
-             let t = cPair :+: g :^: cK in   -- Bohm's original
-             let t' = cPair :*: V"*" :*: (g :^: V"^")  -- another without additive apparatus 
-             in t'
+             let curry  g = cPair :+: g :^: cK in   -- Bohm's original
+             let curry' g = cPair :*: cM :*: (g :^: cE)  -- another without additive apparatus 
+             in curry' (a :^: V"^" :+: b :^: V"^")
 cBohmE a b = a :*: cPair :+: b :*: V"^"
 cBohmM a b = a :+: b              
-cBohm0 a   = V"0" :*: a :^: V"^"
+cBohm0 a   = c0 :*: (a :^: cE)
 \end{code}
 These have the crucial properties
 \begin{spec}
@@ -429,12 +480,16 @@ showE (V "^") _ = ("[^]"++)
 showE (V "*") _ = ("[*]"++)
 showE (V "+") _ = ("[+]"++)
 showE (V ",") _ = ("[,]"++)
+showE (V "~") _ = ("[~]"++)
+showE (V "&") _ = ("[&]"++)
 showE (V str) _ = (str++)
 showE (a :+: b) p = opp p 0 (showE a 0 . (" + "++) . showE b 0)
 showE (a :*: b) p = opp p 2 (showE a 2 . (" * "++) . showE b 2)
 showE (a :^: b) p = opp p 4 (showE a 5 . (" ^ "++) . showE b 4)
--- because the below is a wierd operator, I make it noisy.
+-- because the below are wierd operator, I make them noisy.
 showE (a :<>: b) p = opp p 4 (showE a 5 . (" <!> "++) . showE b 4)
+showE (a :~: b) p = opp p 4 (showE a 5 . (" <~> "++) . showE b 4)
+showE (a :&: b) p = opp p 4 (showE a 5 . (" <&> "++) . showE b 4)
 parenthesize f = showString"(" . f . showString")"
 opp p op = if p > op then parenthesize else id 
 \end{code}
@@ -507,37 +562,13 @@ The first reduction sequence. This is by far the most useful. One might type som
 \begin{spec}
          test $ vu :^: vz :^: vy :^: vx :^: cS
 \end{spec}
-and see in response:
-\begin{spec}
-1: u ^ z ^ y ^ x ^ ((*) * (*) ^ (*) * ((^) * ((^) + (^)) ^ (*)) ^ ((^) * (*) ^ (*)))
-2: u ^ z ^ y ^ (x ^ ((*) * (*) ^ (*))) ^ ((^) * ((^) + (^)) ^ (*)) ^ ((^) * (*) ^ (*))
-3: u ^ z ^ y ^ (x ^ ((*) * (*) ^ (*))) ^ (((^) * ((^) + (^)) ^ (*)) ^ (^)) ^ (*) ^ (*)
-4: u ^ z ^ y ^ (x ^ ((*) * (*) ^ (*))) ^ ((*) * ((^) * ((^) + (^)) ^ (*)) ^ (^))
-5: u ^ z ^ y ^ ((x ^ ((*) * (*) ^ (*))) ^ (*)) ^ ((^) * ((^) + (^)) ^ (*)) ^ (^)
-6: u ^ z ^ y ^ ((^) * ((^) + (^)) ^ (*)) ^ (x ^ ((*) * (*) ^ (*))) ^ (*)
-7: u ^ z ^ y ^ (x ^ ((*) * (*) ^ (*)) * (^) * ((^) + (^)) ^ (*))
-8: u ^ z ^ (y ^ x ^ ((*) * (*) ^ (*))) ^ ((^) * ((^) + (^)) ^ (*))
-9: u ^ z ^ ((y ^ x ^ ((*) * (*) ^ (*))) ^ (^)) ^ ((^) + (^)) ^ (*)
-10: u ^ z ^ (((^) + (^)) * (y ^ x ^ ((*) * (*) ^ (*))) ^ (^))
-11: u ^ (z ^ ((^) + (^))) ^ (y ^ x ^ ((*) * (*) ^ (*))) ^ (^)
-12: u ^ (y ^ x ^ ((*) * (*) ^ (*))) ^ z ^ ((^) + (^))
-13: u ^ (y ^ x ^ ((*) * (*) ^ (*))) ^ (z ^ (^) * z ^ (^))
-14: u ^ ((y ^ x ^ ((*) * (*) ^ (*))) ^ z ^ (^)) ^ z ^ (^)
-15: u ^ z ^ (y ^ x ^ ((*) * (*) ^ (*))) ^ z ^ (^)
-16: u ^ z ^ z ^ y ^ x ^ ((*) * (*) ^ (*))
-17: u ^ z ^ z ^ y ^ (x ^ (*)) ^ (*) ^ (*)
-18: u ^ z ^ z ^ y ^ ((*) * x ^ (*))
-19: u ^ z ^ z ^ (y ^ (*)) ^ x ^ (*)
-20: u ^ z ^ z ^ (x * y ^ (*))
-21: u ^ z ^ (z ^ x) ^ y ^ (*)
-22: u ^ z ^ (y * z ^ x)
-23: u ^ (z ^ y) ^ z ^ x
-\end{spec}
+and look at what is displayed.
+
 
 \begin{code}
 test :: E -> NList E
-test  = NList . hd . rss 
-hd (x:_) = x 
+test  = NList . head . rss 
+hd ( x : _ ) = x 
 \end{code}
 
 
@@ -794,6 +825,9 @@ cR'         = (V "^") :*: (V "^") :*: (V "*") :^: (V "*")  -- a variant
 
 cL          :: E
 cL          = cPair
+
+cR_show  = test $ vc :^: vb :^: va :^: cR
+cL_show  = test $ vc :^: vb :^: va :^: cL
 \end{code}
 It has a cousin, that rotates in the other direction.
 This is actually the pairing combinator.
