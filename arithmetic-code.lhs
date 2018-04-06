@@ -77,35 +77,29 @@ For infinitary operations, I need these
 pfs :: (a -> a -> a) -> a -> [a] -> [[a]]
 pfs op ze xs = [ b ze | (b,_) <- pfs' xs id]
                where pfs' (x:xs) b = pfs' xs (b . (op x))
-type E x = x -> x
-type N x = E (E x)
-pi    :: [E a] -> [[E a]]
-sigma :: [a -> E b] -> [[a -> E b]]
+type EE x = x -> x
+type N x = EE (EE x)
+pi    :: [EE a] -> [[EE a]]
+sigma :: [a -> EE b] -> [[a -> EE b]]
 pi    = pfs (*) one
 sigma = pfs (+) zero
 
 index        :: N [a] -> [a] -> a
-index n         = head (n tail) 
-index0 n        = (tail ^ n) ^ head
-index1 n        = tail ^ (n * head)  . ($ tail) 
-index2          = (tail ^) . (* head)
-index3          = (* head) * (tail ^)
-index0'         = head . ($ tail) 
-index'       :: N [a] -> [a] -> a
-index'       = head . mydrop 
+index n         = head . n tail
 
 type C x y = (x -> y) -> y
-eta :: x -> C x y
-eta = (^)
+ret :: x -> C x y
+ret = (^)
 mu  :: C (C x y) y -> C x y
 mu mm k = mm (ret k)
 -- x -> C x x and N x are isomorphic. 
-myflip : (x -> C x x) -> N x
+
+myflip :: (x -> C x x) -> N x
 myflip = flip 
-myflip' : N x -> x -> C x x
+myflip' :: N x -> x -> C x x
 myflip' = flip 
 
-mydrop :: C a b  -- (E [a] -> b) -> b
+mydrop :: (([a] -> [a]) -> t) -> t  -- unifies with N [a] -> EE [a]
 mydrop n  = n tail
 mydrop'   = ($ tail)
 \end{code}
@@ -611,6 +605,12 @@ even quite small examples.
 stats_rss :: E -> (Int,(Int,Int))
 stats_rss e = let (b0:bs) = map length (rss e)
               in (length (b0:bs), ( foldr min b0 bs , foldr max b0 bs) )
+data DisplayStats = DisplayStats (Int,(Int,Int))
+instance Show (DisplayStats) where
+  showsPrec _ (DisplayStats (n,(l,h)))
+              = ("There are "++) . shows n . (" reduction sequences"++)
+                . ("varying in length between "++)
+                . shows l . (" and "++) . shows h
 \end{code}
 
 \begin{code}
@@ -649,32 +649,33 @@ a potentially infinite history of successive accumulator contents.
 \begin{code}
 elim :: [a] -> (a,[a])
 elim ts = (head ts, tail ts)
-step+ (a,f) = (a + f o, f . s)
-step* (a,f) = (a * f o, f . s)
-step+ (a,f) = (a + head f, tail f)
-step* (a,f) = (a * head f, tail f)
-step f (a,w) = (f a (head w), tail w)
-   f a i  = a . (i:)
+-- step_add' (a,f) = (a + f o, f . s)
+-- step_mul' (a,f) = (a * f o, f . s)
+step_add (a,f) = (a + head f, tail f)
+step_mul (a,f) = (a * head f, tail f)
+-- step f (a,w) = (f a (head w), tail w)
+--   f a i  = a . (i:)
 step (b,w) = (b . (head w:), tail w)            
-post-process b = b []
-run :: X^w -> (E . E) (E (X^*),X^w) -> A^w 
+postprocess b = b []
+-- run :: X^w -> (E . E) (E (X^*),X^w) -> A^w 
 run inp n = 
         post . iteration n --  (n step start)
         where
-              step :: (E (X^*), X^w) -> (E (X^*), X^w)
+--              step :: (E (X^*), X^w) -> (E (X^*), X^w)
               step (b,w)  = ( tack b (head w:) , tail w )
-              start       :: (E (X^*), X^w)
+--              start       :: (E (X^*), X^w)
               start       = (empty,inp)
-              empty :: E (X^*)
+--              empty :: E (X^*)
               empty       = id
-              tack  :: E (X^*) -> X -> E (X^*)
+--              tack  :: E (X^*) -> X -> E (X^*)
               tack b x    = b . x     -- tack = (.)
-              emit  :: E (X^*) -> X^*
+--              emit  :: E (X^*) -> X^*
               emit b      = b []      -- emit = ($[])
-              post  :: X^* -> A  -- some kind of fold
-              iteration :: (E . E) (E (X^*),X^w)  -> (E (X^*),X^w)
+              post        = id        -- just for example
+--              post  :: X^* -> A  -- some kind of fold
+--              iteration :: (E . E) (E (X^*),X^w)  -> (E (X^*),X^w)
               iteration n = n step start
-  \end{code}
+\end{code}
 \fi
 
 \section{Examples} 
@@ -1307,7 +1308,7 @@ fo op fst (x:xs) = fst `op` fo op x xs
 --  readsPrec d = prun expression . tokens
 
 rdexp :: String -> E
-rdexp = fst . hd . prun expression . tokens
+rdexp = fst . head . prun expression . tokens
 \end{code}
 
 
