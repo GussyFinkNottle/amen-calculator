@@ -77,21 +77,35 @@ For infinitary operations, I need these
 pfs :: (a -> a -> a) -> a -> [a] -> [[a]]
 pfs op ze xs = [ b ze | (b,_) <- pfs' xs id]
                where pfs' (x:xs) b = pfs' xs (b . (op x))
-
-pi    :: [a -> a] -> [[a -> a]]
-sigma :: [a -> b -> b] -> [[a -> b -> b]]
+type E x = x -> x
+type N x = E (E x)
+pi    :: [E a] -> [[E a]]
+sigma :: [a -> E b] -> [[a -> E b]]
 pi    = pfs (*) one
 sigma = pfs (+) zero
 
-index :: (([a] -> [a]) -> [a] -> [a]) -> [a] -> a
-index n         = n tail * head
-index' n        = (tail ^ n) * head
-index''         = (* head) . (tail ^) 
-index'''        = (tail ^) * (* head)
-index'''' n     = mydrop n * head
-index'''''      = mydrop * (* head)
+index        :: N [a] -> [a] -> a
+index n         = head (n tail) 
+index0 n        = (tail ^ n) ^ head
+index1 n        = tail ^ (n * head)  . ($ tail) 
+index2          = (tail ^) . (* head)
+index3          = (* head) * (tail ^)
+index0'         = head . ($ tail) 
+index'       :: N [a] -> [a] -> a
+index'       = head . mydrop 
 
-mydrop :: (([a] -> [a]) -> b) -> b
+type C x y = (x -> y) -> y
+eta :: x -> C x y
+eta = (^)
+mu  :: C (C x y) y -> C x y
+mu mm k = mm (ret k)
+-- x -> C x x and N x are isomorphic. 
+myflip : (x -> C x x) -> N x
+myflip = flip 
+myflip' : N x -> x -> C x x
+myflip' = flip 
+
+mydrop :: C a b  -- (E [a] -> b) -> b
 mydrop n  = n tail
 mydrop'   = ($ tail)
 \end{code}
@@ -170,7 +184,7 @@ different binary `cons' operations, each with an distinct arithmetical flavour.
 It is convenient to have atomic constants identified by arbitrary strings.
 The constants |"+"|, |"*"|, |"^"|, |"0"|, |"1"| are treated specially.
 \begin{code}
-(cA,cM,cE,c0,c1,cC',cPair',c0') = (V"+",V"*",V"^",V"0",V"1",V"~",V"&",V"<>")
+(cA,cM,cE,c0,c1,cC_new,cPair_new,c0') = (V"+",V"*",V"^",V"0",V"1",V"~",V"&",V"<>")
 \end{code}
 
 For each arithmetical operator, we define a function that takes two
@@ -276,6 +290,10 @@ tlr e = case e of
              (a :^: (b :&: c))    ->  [ c :^: b :^: a            ]  -- a permutation/swap
              (a :^: (b :~: c))    ->  [ c :^: a :^: b            ]  -- another permutation/swap
              (a :<>: b)           ->  [ b                        ]  --  drop1
+             (V "0" :^: V "+")    ->  [ c1                       ]
+             (V "1" :^: V "*")    ->  [ c1                       ]
+             (V "~" :*: V "~")    ->  [ c1                       ]
+             (V "^" :*: V "~")    ->  [ V "&"                    ]
              _                    ->  [                          ]
 \end{code}
 Thought: the associativity laws can be done in place.
@@ -501,8 +519,70 @@ instance Show E where showsPrec _ e = showE e 0
 
 \subsection{trees and lists} 
 
-Code to display an |NTree a| that indentation in an attempt to make the
-branching structure of the tree visible. (Actually, this is entirely useless.)
+
+Code to display a numbered list of showable things, throwing a line between entries.
+\begin{code}
+newtype NList a = NList [a]
+instance Show a => Show (NList a) where
+   showsPrec _ (NList es) = 
+      (composelist . commalist ('\n':) . map showline . enum ) es
+      where showline (n,e) = shows n . showString ": " . shows e 
+\end{code}
+
+\subsubsection{General list and stream stuff}
+Code to pair each entry in a list/stream with its position.
+\begin{code}
+enum :: [a] -> [(Int,a)]
+enum = zip [1..]
+\end{code}
+
+Code to compose a finite list of endofunctions.
+\begin{code}
+composelist :: [ a -> a ] -> a -> a
+composelist = foldr (.) id
+\end{code}
+
+Code to insert a `comma' at intervening positions in a stream.
+\begin{code}
+commalist :: a -> [a] -> [a]
+commalist c (x:(xs'@(_:_))) = x:c:commalist c xs' 
+commalist c xs = xs
+\end{code}
+
+Remove duplicates from a list/stream. The order in which entries are
+first encountered is preserved in the output. 
+\begin{code}
+nodups :: Eq a => [a] -> [a] 
+nodups [] = []
+nodups (x:xs) = x : nodups (filter (/= x) xs)
+\end{code}
+
+\subsection{Some interesting things to use}
+
+The first reduction sequence. This is by far the most useful. One might type something like
+\begin{spec}
+         test $ vu :^: vz :^: vy :^: vx :^: cS
+\end{spec}
+\begin{code}
+test :: E -> NList E
+test  = NList . head . rss 
+\end{code}
+
+The normal form. This is occasionally useful when evaluation will obviously
+terminate.  The normal form is displayed.
+\begin{spec}
+         eval $ vz :^: vy :^: vx :^: cS
+\end{spec}
+
+The n'th reduction sequence.
+\begin{code}
+nth_rs :: Int -> E -> NList E 
+nth_rs n = NList . (!! n) . rss 
+\end{code}
+
+Code to display an |NTree a| that uses indentation in an attempt to make the
+branching structure of the tree visible.
+(Actually, this is almost entirely useless, except for very small expressions)
 \begin{code}
 newtype NTree a = NTree (Tree a)
 instance Show a => Show (NTree a) where
@@ -520,64 +600,7 @@ instance Show a => Show (NTree a) where
                                . enum ) ts)
 
 \end{code}
-
-Code to display a numbered list of showable things, throwing a line between entries.
-\begin{code}
-newtype NList a = NList [a]
-instance Show a => Show (NList a) where
-   showsPrec _ (NList es) = 
-      (composelist . commalist ('\n':) . map showline . enum ) es
-      where showline (n,e) = shows n . showString ": " . shows e 
-\end{code}
- 
-Code to pair each entry in a list with its position.
-\begin{code}
-enum :: [a] -> [(Int,a)]
-enum = zip [1..]
-\end{code}
-
-\begin{code}
-composelist :: [ a -> a ] -> a -> a
-composelist = foldr (.) id
-\end{code}
-
-Code to insert a `comma' at intervening positions in a list.
-\begin{code}
-commalist :: a -> [a] -> [a]
-commalist c (x:(xs'@(_:_))) = x:c:commalist c xs' 
-commalist c xs = xs
-\end{code}
-
-Remove duplicates from a list. The order in which entries are
-first encountered is preserved in the output. 
-\begin{code}
-nodups :: Eq a => [a] -> [a] 
-nodups [] = []
-nodups (x:xs) = x : nodups (filter (/= x) xs)
-\end{code}
-
-\subsection{Some interesting things to use}
-
-The first reduction sequence. This is by far the most useful. One might type something like
-\begin{spec}
-         test $ vu :^: vz :^: vy :^: vx :^: cS
-\end{spec}
-and look at what is displayed.
-
-
-\begin{code}
-test :: E -> NList E
-test  = NList . head . rss 
-hd ( x : _ ) = x 
-\end{code}
-
-
-The n'th reduction sequence.
-
-\begin{code}
-nth_rs :: Int -> E -> NList E 
-nth_rs n = NList . (!! n) . rss 
-\end{code}
+We can try something like | let s = Ntree .reductTree in s (va :^: cS) |. 
 
 
 Some basic stats on reduction sequence length. The number
@@ -604,9 +627,56 @@ fd (x:xs@(y:_)) | x /= y = Just (x, xs)
 
 
 
+\subsection{IO}
+
+We would like to run these programs.
+My suggestion is to think of the programs as
+stream processors.
+The program runs in a state-space consisting
+of an accumulator register, and an unconsumed stream.
+Each cycle of the program consumes
+some initial segment of the input stream, and
+performs a corresponding action on the accumulator.
+(This might be to add something to it, or multiply
+it by something.)
+
+The stream of output produced by the program is then
+a potentially infinite history of successive accumulator contents.
 
 
-%\appendix
+
+\iffalse
+\begin{code}
+elim :: [a] -> (a,[a])
+elim ts = (head ts, tail ts)
+step+ (a,f) = (a + f o, f . s)
+step* (a,f) = (a * f o, f . s)
+step+ (a,f) = (a + head f, tail f)
+step* (a,f) = (a * head f, tail f)
+step f (a,w) = (f a (head w), tail w)
+   f a i  = a . (i:)
+step (b,w) = (b . (head w:), tail w)            
+post-process b = b []
+run :: X^w -> (E . E) (E (X^*),X^w) -> A^w 
+run inp n = 
+        post . iteration n --  (n step start)
+        where
+              step :: (E (X^*), X^w) -> (E (X^*), X^w)
+              step (b,w)  = ( tack b (head w:) , tail w )
+              start       :: (E (X^*), X^w)
+              start       = (empty,inp)
+              empty :: E (X^*)
+              empty       = id
+              tack  :: E (X^*) -> X -> E (X^*)
+              tack b x    = b . x     -- tack = (.)
+              emit  :: E (X^*) -> X^*
+              emit b      = b []      -- emit = ($[])
+              post  :: X^* -> A  -- some kind of fold
+              iteration :: (E . E) (E (X^*),X^w)  -> (E (X^*),X^w)
+              iteration n = n step start
+  \end{code}
+\fi
+
 \section{Examples} 
 
 In this section, we encode some naturally occurring
@@ -716,9 +786,11 @@ which
 satisfies | f^cCurry x y = f (x , y) |.
 The following are alternate versions of this combinator.
 \begin{code}
-cCurry = cK :*: (cPair :^: V"+")
-cCurry' = cB :*: (cPair :^: cM)
+cCurry   = cK :*: (cPair :^: cA)
+cCurry'  = cB :*: (cPair :^: cM)
+cCurry_demo = (vz :^: (vy :^: vx :^: cPair) :^: vf) :&: (vz :^: vy :^: vx :^: vf :^: cCurry)
 \end{code}
+Try | test $ cK :^: cCurry_demo |, then | test $ c0 :^: cCurry_demo |.
 
 \begin{spec}
 tru x y  = x 
@@ -737,8 +809,9 @@ fal      = (<>)
 \end{spec}
 
 \begin{code}
-cTrue = V"0" :^: cC
-cFalse = V"0"
+cFalse = c0 
+cTrue = c0 :^: cC    -- cK
+cNot  = cC 
 \end{code}
 
 \begin{spec}
@@ -750,8 +823,8 @@ snd      = (fal^)
 \end{spec}
 
 \begin{code}
-cFst = cTrue :^: V"^" 
-cSnd = cFalse :^: V"^"
+cFst = cTrue :^: cE 
+cSnd = cFalse :^: cE 
 \end{code}
 
 
@@ -851,7 +924,7 @@ where $T x y = y (x x y)$.
 $T$ can thus be seen as applying a kind of dual (with respect to the involution |C|) of the 
 successor operator to the value |sap|.
 
-Some expressions for the successor operation ,
+Some expressions for 
 Turing's semi-Y, and his Y.
 \begin{code}
 cT   = cSap :^: (cC :*: cSuc :*: cC)
@@ -875,15 +948,15 @@ operation that flips (that is, rotates) the top two entries.
 
 It can be encoded as follows:
 \begin{code}
-cR, cR'     :: E
+cR, cR_var     :: E
 cR          = cC :^: cC 
-cR'         = (V "^") :*: (V "^") :*: (V "*") :^: (V "*")  -- a variant
+cR_var         = (V "^") :*: (V "^") :*: (V "*") :^: (V "*")  -- a variant
 
 cL          :: E
 cL          = cPair
 
-cR_show  = test $ vc :^: vb :^: va :^: cR
-cL_show  = test $ vc :^: vb :^: va :^: cL
+cR_demo  = test $ vc :^: vb :^: va :^: cR
+cL_demo  = test $ vc :^: vb :^: va :^: cL
 \end{code}
 It has a cousin, that rotates in the other direction.
 This is actually the pairing combinator.
@@ -891,10 +964,10 @@ This is actually the pairing combinator.
 It so happens that the |cC| combinator and the |cR| are each
 definable from the other. 
 
-\begin{spec}
-  cR :^: cR :^: cR = cC 
-  cC :^: cC        = cR              
-\end{spec}
+\begin{code}
+cC'  =  cR :^: cR :^: cR 
+cR'  =  cC :^: cC 
+\end{code}
 
 To be a little frivolous, this gives us a way of churning out
 endless variants of the combinators |combR| and |flip|.
@@ -914,11 +987,23 @@ of variables:
 | a^b = b^(a^) = b^a^(^) |.
 
 On the topic of the continuation transform, for a fixed result type
-|R|, the type-transformer |CT|
-\begin{spec}
- CT a = (a -> R) -> R
-\end{spec}
-is the well known continuation monad.  The unit |return| and multiplication |join| 
+|R = ()|, the type-transformer |CT|
+\begin{code}
+type CT a = (a -> ()) -> ()
+\end{code}
+is the well known continuation monad.
+The action on maps is
+\begin{code}
+map_CT :: (a -> b) -> CT a -> CT b
+map_CT f cta k = cta (k . f)
+map_CT'1 f cta k = cta (f * k)
+map_CT'2 f cta   = (f *) * cta
+map_CT' f       = ((f *) *)
+
+cmap_CT :: E
+cmap_CT = cM :*: cM
+\end{code}
+The unit |return| and multiplication |join| 
 of this monad have simple arithmetical expressions. 
 \begin{spec}
 return      :: a -> CT a
@@ -926,6 +1011,12 @@ join        :: CT (CT a) -> CT a
 return a b  =  a ^ b            -- ie. |return = (^)|
 f `join` s  =  f (return s)     -- ie. |join = ((^)*)|
 \end{spec}
+\begin{code}
+cEta        :: E
+cEta = cE
+cMu         :: E
+cMu  = cE :^: cM
+\end{code}
 
 The bind operator |>>=| is not quite as simple.
 \begin{spec}
@@ -1256,3 +1347,14 @@ demoNaught  = let d = V"0" :*: V"0" :^: V"^" in d
 *Main> let l = V"*" :*: cB :*: (V"+" :^: V"*") ; r = V"*" :+: (V"+" :^: cK) :+: (V"*" :*: V"*") in test (vc :^: vb :^: va :^: l)
 
   let sb = (vc :^: vb) :^: vc :^: va ; s = blog "a" (blog "b" (blog "c" sb)) ; k = blog "a" (blog "b" va) in test $ vw :^: vz :^: vy :^: vx :^: s
+
+let b = vz :^: vy :^: vx ;
+    p0   = blog "z" . blog "y" . blog "x" ;    -- converse pair = cPair :^: cC       swap(a,c)
+    p1   = blog "z" . blog "x" . blog "y" ;    -- rotation      = cR    = cC :^: cC
+    p2   = blog "y" . blog "x" . blog "z" ;    -- exponential   = cE                 swap(a,b)
+    p3   = blog "y" . blog "z" . blog "x" ;    -- pair          = cPair = cE :*: cC 
+    p4   = blog "x" . blog "y" . blog "z" ;    -- identity      = c1    = cC :*: cC 
+    p5   = blog "x" . blog "z" . blog "y" ;    -- flip          = cC                 swap(b,c)
+    p = (p0 b :&: p1 b :&: p2 b :&: p3 b :&: p4 b :&: p5 b) in test $p
+
+let t = cE :*: cC ; vec h = vc :^: vb :^: va :^: h in test $ vx :^: (vec t :&: vec cPair)
