@@ -1152,13 +1152,22 @@ cO n = let x = cOzero : [cOsuc t | t <- x ] in x !! n
 function of the zero numbers.  
 \begin{code}
 sgbar = ((<>) ^)
+cSgbar = c0 :^: cE
+sgbar' n s z = n (const z) (s z)
+cSgbar' = let v1 = vz :^: vs
+              ef = vz :^: cK
+          in (blog "n" (blog "s" (blog "z" (v1 :^: ef :^: vn ))))
 \end{code}
 
 Using |sgbar|, we can define |sg|, which is 0
 at 0, and 1 elsewhere (the sign function, or the characteristic
 function of the non-zero numbers).
 \begin{code}
-sg = sgbar * sgbar 
+sg = sgbar * sgbar
+cSg = cSgbar :*: cSgbar
+cSg' = let v1 = vz :^: vs
+           ef = v1 :^: cK
+       in (blog "n" (blog "s" (blog "z" (vz :^: ef :^: vn ))))
 \end{code}
 It may be clearer to write it |sg a = (<>) ^ (<>) ^ a|.  Think of double negation. 
 
