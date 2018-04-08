@@ -14,11 +14,10 @@ module _ where
   data Id_ (A : Set) (a : A) : A -> Set where
     refl : (Id A) a a
 
-  IdElim : {A : Set}-> (a : A) ->
+  IdElim : {A : Set}-> (a : A) ->    -- strong, a la Christine
            (C : ( x : A) -> (Id A) a x -> Set)->
            (c : C a refl)->
-           (a' : A)->
-           (â : (Id A) a a' )-> C a' â
+           (a' : A)-> (â : (Id A) a a' )-> C a' â
   IdElim a C ca .a refl = ca
 
 -- normal-ish empty data-type.
@@ -30,6 +29,19 @@ module _ where
   efq : (C : O -> Set)-> (x : O)-> C x
   efq a () 
 
+  data O' : Set where  S : O' -> O'
+  EFQ' : O' -> Set
+  EFQ' (S z) = EFQ' z
+
+  efq' : (C : O' -> Set)->
+         (( x : O') -> C x -> C (S x))->
+         (x : O')-> C x
+  efq' C cs (S z) = cs z (efq' C cs z) -- efq' C {!z!} {!!}  -- {!z!} -- a () 
+  efq'' : (C : O' -> Set)->
+          (x : O')-> C x
+  efq'' C = efq' C {!!} -- (efq' λ z → C z → C (S z) {!!})  
+
+  
 -- pale imitation of 1
 
   I : Set
@@ -69,3 +81,33 @@ is extensionally equal to our favourite one.
 But not that all elements of this function type are identical.
 -}
     
+  module _ where
+
+-- the question arises, what if there are constructors for O, but no constants.
+-- The role played by diagonalisation here is genuinely mysterious to me. 
+-- Thanks to Pierre-Evariste Dagand. 
+
+  data N₀' : Set where 
+    S : N₀' -> N₀'
+
+  Etry : N₀' -> Set
+  Etry (S z) = Etry z 
+
+  module EFQ' (E : N₀' -> Set) where
+
+    g : N₀' → (x : N₀') → E x
+    g (S y) x = g y x
+
+    g' : N₀' → (x : N₀') → E x  
+    g' (S y) = g' y
+
+    f : (x : N₀') → E x
+    f n = g' n n             -- diagonalisation/contraction/W-combinator....
+
+    elim : (x : N₀')-> E x
+    elim x = g x x        -- NB diagonalising
+
+    elim' : (x : N₀')-> E x
+    elim' x = g' x x
+
+

@@ -165,7 +165,7 @@ infixr 6  :+:
 \end{code}
 
 \begin{code}
-data E  = V String
+data E  = V String  | C String
           | E :^: E
           | E :*: E
           | E :+: E
@@ -498,6 +498,12 @@ showE (V "+") _ = ("[+]"++)
 showE (V ",") _ = ("[,]"++)
 showE (V "~") _ = ("[~]"++)
 showE (V "&") _ = ("[&]"++)
+showE (C "^") _ = ("[^]"++)
+showE (C "*") _ = ("[*]"++)
+showE (C "+") _ = ("[+]"++)
+showE (C ",") _ = ("[,]"++)
+showE (C "~") _ = ("[~]"++)
+showE (C "&") _ = ("[&]"++)
 showE (V str) _ = (str++)
 showE (a :+: b) p = opp p 0 (showE a 0 . (" + "++) . showE b 0)
 showE (a :*: b) p = opp p 2 (showE a 2 . (" * "++) . showE b 2)
@@ -618,15 +624,18 @@ instance Show (DisplayStats) where
 \end{code}
 
 \begin{code}
+-- check that all reduction sequences terminate with the same expression
 nf :: E -> [E]
 nf = map last . rss 
 
-fd :: [E] -> Maybe (E,[E])   -- first difference
+-- might be useful
+-- find the first suffix of a list that begins with a change
+fd :: [E] -> Maybe [E]  -- first difference
 fd [] = Nothing
 fd [x] = Nothing
-fd (x:xs@(y:_)) | x == y = fd xs
-fd (x:xs@(y:_)) | x /= y = Just (x, xs)
-
+fd (x:xs@(y:_))   | x == y = fd xs
+fd z@(x:xs@(y:_)) | x /= y = Just z
+-- do not try this on a constant infinite stream.
 \end{code}
 
 
@@ -1017,11 +1026,9 @@ return a b  =  a ^ b            -- ie. |return = (^)|
 f `join` s  =  f (return s)     -- ie. |join = ((^)*)|
 \end{spec}
 \begin{code}
-cRet  :: E
+cRet, cMu, cMap  :: E
 cRet = cE
-cMu   :: E
 cMu  = cE :^: cM
-cMap  :: E
 cMap  = blog "m" (blog "c" (blog "k"  (vm :*: vk) :^: vc))
 \end{code}
 
@@ -1058,21 +1065,21 @@ type $r$, as |not a = a -> r|.  So when defining something,
 one has unrestricted access to these two cases.
 
 Peirce's law postulates the existence of an algebra for
-a certain monad, called `the Pierce monad' by Escardo\&co.
+a certain monad, called `the Peirce monad' by Escardo\&co.
 
 When `true' |0| (including efq) and hence true negation is
-added, to minimal logic, Pierce's law implies not just
+added, to minimal logic, Peirce's law implies not just
 excluded middle, but full classical logic with involutive
 negation, \ie{} |~(~A) = A|. 
 
-To suppose the negation of Pierce's law leads
+To suppose the negation of Peirce's law leads
 to an absurdity. (We don't need efq for this.)
 \begin{spec}
       ~Peirce   =   ~a & ((a->b)->a)
                 =>  ~a & ~(a->b)
                 =   ~a & ~b & a 
 \end{spec}
-We cannot hope to prove Pierce's law, but we might expect to
+We cannot hope to prove Peirce's law, but we might expect to
 prove it's transform by the continuation monad |((a -> CT b) -> CT a) -> CT a|,
 in which all the arrows |a -> b| have been turned into Kleisli arrows
 |a -> CT b|.  Or maybe even |((a -> b) -> CT a) -> CT a|.
@@ -1092,7 +1099,7 @@ Well, if that's an arithmetical expression of classical logic, it's neither very
 One can however see some additive features here, namely $(\wedge) + (\wedge)$ and $0$. I find that
 reassuring. 
 
-One can ask the same questions with respect to the Pierce monad.
+One can ask the same questions with respect to the Peirce monad.
 
 
 The monadic apparatus can be encoded as follows
@@ -1101,11 +1108,10 @@ ct         ::  E -> E
 ct a       =   a :^: V "^"                     -- unit
 cb         ::  E -> E -> E
 cb m f     =   V "^" :*: (f :^: V "*") :*: m  -- bind
-cCTret     ::  E
+
+cCTret, cCTjoin, cCTbind ::  E
 cCTret     =   V"^"
-cCTjoin    ::  E
 cCTjoin    =   cCTret :^: V"*"
-cCTbind    ::  E                             
 cCTbind    =   blog "m" (blog "f" (cb (V"m") (V"f")))
 \end{code}
 It may be interesting to point out that
@@ -1182,7 +1188,7 @@ cOsuc e = e :+: (e :^: V"^")
 cOzero :: E
 cOzero = V"0"
 
-cO :: Int -> E
+cO :: Int -> E    -- allows inputting numerals in decimal.
 cO n = let x = cOzero : [cOsuc t | t <- x ] in x !! n 
 \end{code}
 \subsection{sgbar}
