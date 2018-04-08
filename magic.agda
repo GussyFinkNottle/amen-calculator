@@ -37,9 +37,10 @@ module _ where
          (( x : O') -> C x -> C (S x))->
          (x : O')-> C x
   efq' C cs (S z) = cs z (efq' C cs z) -- efq' C {!z!} {!!}  -- {!z!} -- a () 
+
   efq'' : (C : O' -> Set)->
-          (x : O')-> C x
-  efq'' C = efq' C {!!} -- (efq' λ z → C z → C (S z) {!!})  
+          O' -> (x : O')-> C x
+  efq'' C = efq' (λ _ → (x : O')-> C x)  λ _ x₁ → x₁
 
   
 -- pale imitation of 1
@@ -87,27 +88,24 @@ But not that all elements of this function type are identical.
 -- The role played by diagonalisation here is genuinely mysterious to me. 
 -- Thanks to Pierre-Evariste Dagand. 
 
-  data N₀' : Set where 
-    S : N₀' -> N₀'
+  data O'' : Set where 
+    S : O'' -> O''
 
-  Etry : N₀' -> Set
+  Etry : O'' -> Set
   Etry (S z) = Etry z 
 
-  module EFQ' (E : N₀' -> Set) where
+  module EFQ' (E : O'' -> Set) where
 
-    g : N₀' → (x : N₀') → E x
+    g : O'' → (x : O'') → E x
     g (S y) x = g y x
 
-    g' : N₀' → (x : N₀') → E x  
+    g' : O'' → (x : O'') → E x  
     g' (S y) = g' y
 
-    f : (x : N₀') → E x
-    f n = g' n n             -- diagonalisation/contraction/W-combinator....
-
-    elim : (x : N₀')-> E x
+    elim : (x : O'')-> E x
     elim x = g x x        -- NB diagonalising
 
-    elim' : (x : N₀')-> E x
+    elim' : (x : O'')-> E x
     elim' x = g' x x
 
 
