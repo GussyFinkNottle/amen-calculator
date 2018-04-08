@@ -7,6 +7,7 @@
 
 
 \title{A Turing complete arithmetical calculator}
+\newcommand{\ie}{\textit{ie.\hspace{0.5ex}}}
 
 \begin{document}
 \maketitle 
@@ -609,7 +610,7 @@ data DisplayStats = DisplayStats (Int,(Int,Int))
 instance Show (DisplayStats) where
   showsPrec _ (DisplayStats (n,(l,h)))
               = ("There are "++) . shows n . (" reduction sequences"++)
-                . ("varying in length between "++)
+                . (", varying in length between "++)
                 . shows l . (" and "++) . shows h
 \end{code}
 
@@ -1013,8 +1014,8 @@ return a b  =  a ^ b            -- ie. |return = (^)|
 f `join` s  =  f (return s)     -- ie. |join = ((^)*)|
 \end{spec}
 \begin{code}
-cEta        :: E
-cEta = cE
+cRet        :: E
+cRet = cE
 cMu         :: E
 cMu  = cE :^: cM
 \end{code}
@@ -1036,26 +1037,48 @@ the function whose type is the Kleislified version of
 Peirce's law:  |((a -> CT b) -> CT a) -> CT a|.
 
 Peirce's law: | ((a->b) -> a) -> a |
-is interesting because it is involves only
-the arrow, but when |0| and hence negation is
-added, it implies classical logic in both the
-form |~(~A) = A|, and the form |~A or A|.
-The supposition that it is false leads to an absurdity.
+is interesting because it is a formula of minimal logic.
+It involves only the arrow, and not |0|.
+\emph{Yet} you can prove excluded
+middle $a or not a$ from it, where negation is relativised to a generic
+type $r$, as |not a = a -> r|.  So when defining something,
+one has unrestricted access to these two cases.
+
+Peirce's law postulates the existence of an algebra for
+a certain monad, called `the Pierce monad' by Escardo\&co.
+
+When `true' |0| (including efq) and hence true negation is
+added, to minimal logic, Pierce's law implies not just
+excluded middle, but full classical logic with involutive
+negation, \ie{} |~(~A) = A|. 
+
+To suppose the negation of Pierce's law leads
+to an absurdity. (We don't need efq for this.)
 \begin{spec}
       ~Peirce   =   ~a & ((a->b)->a)
                 =>  ~a & ~(a->b)
                 =   ~a & ~b & a 
 \end{spec}
-We cannot hope to prove Pierce's law, but we can expect to
-prove it's continuation transform |((a -> CT b) -> CT a) -> CT a|,
+We cannot hope to prove Pierce's law, but we might expect to
+prove it's transform by the continuation monad |((a -> CT b) -> CT a) -> CT a|,
 in which all the arrows |a -> b| have been turned into Kleisli arrows
-|a -> CT b|. 
-
-Unless I'm missing something, or mistaken, |callCC| is not very beguiling:
+|a -> CT b|.  Or maybe even |((a -> b) -> CT a) -> CT a|.
+We can ask what such a thing would look like expressed with arithmetical
+combinators. 
+I once made an effort to do this, and got the following result (though it
+is pretty certain there are some errors here):
+\iffalse
 \begin{spec}
 (((*) * ((^) * 0 ^ (*)) ^ (^)) ^ (*) * (^)) * ((^) + (^)) ^ (*)
 \end{spec}
-Well, that's classical logic for you.
+\fi
+$$
+(((\times) \times ((\wedge) \times 0^{(\times)})^{(\wedge)})^{(\times) \times (\wedge)}) \times ((\wedge) + (\wedge))^{(\times)}
+$$ 
+Well, if that's an arithmetical expression of classical logic, it's neither very enlightening or beguiling!
+
+One can ask the same questions with respect to the Pierce monad.
+
 
 The monadic apparatus can be encoded as follows
 \begin{code}
@@ -1063,13 +1086,16 @@ ct         :: E -> E
 ct a       = a :^: V "^"                     -- unit
 cb         :: E -> E -> E
 cb m f     = V "^" :*: (f :^: V "*") :*: m  -- bind
+cCTret     :: E
+cCTret     = V"^"
+cCTjoin    :: E
+cCTjoin    = cCTret :^: V"*"
 cCTbind    :: E                             
 cCTbind    = blog "m" (blog "f" (cb (V"m") (V"f")))
-cCTjoin, cCTret :: E
-cCTret     = V"^"
-cCTjoin    = cCTret :^: V"*"
 \end{code}
-
+It may be interesting to point out that
+$(a,b) = (a^{[\wedge]}) \times b^{[\wedge]} = \eta a \times eta b$
+where $\eta$ is the unit of CT.
 
 
 \subsection{Peano numerals}
@@ -1153,6 +1179,7 @@ function of the zero numbers.
 \begin{code}
 sgbar = ((<>) ^)
 cSgbar = c0 :^: cE
+sgbar' :: EE (N a)
 sgbar' n s z = n (const z) (s z)
 cSgbar' = let v1 = vz :^: vs
               ef = vz :^: cK
@@ -1164,7 +1191,9 @@ at 0, and 1 elsewhere (the sign function, or the characteristic
 function of the non-zero numbers).
 \begin{code}
 sg = sgbar * sgbar
-cSg = cSgbar :*: cSgbar
+sg' :: EE (N a)
+sg' n s z   = n (const (s z)) z 
+cSg  = cSgbar :*: cSgbar
 cSg' = let v1 = vz :^: vs
            ef = v1 :^: cK
        in (blog "n" (blog "s" (blog "z" (vz :^: ef :^: vn ))))
