@@ -15,10 +15,10 @@ module _ where
     refl : (Id A) a a
 
   IdElim : {A : Set}-> (a : A) ->
-           (C : A -> Set)->
-           (c : C a)->
+           (C : ( x : A) -> (Id A) a x -> Set)->
+           (c : C a refl)->
            (a' : A)->
-           (â : (Id A) a a' )-> C a'
+           (â : (Id A) a a' )-> C a' â
   IdElim a C ca .a refl = ca
 
 -- normal-ish empty data-type.
