@@ -10,6 +10,7 @@ module _ where
 
 -- could use terms "magic" for efq, and "MAGIC" for EFQ.
 
+-- normal Id stuff.
   data Id_ (A : Set) (a : A) : A -> Set where
     refl : (Id A) a a
 
@@ -20,20 +21,22 @@ module _ where
            (â : (Id A) a a' )-> C a'
   IdElim a C ca .a refl = ca
 
+-- normal-ish empty data-type.
+  data O : Set where
 
-  data ∅ : Set where
-
-  EFQ : ∅ -> Set   -- define the empty family of sets
+  EFQ : O -> Set   -- define the empty family of sets
   EFQ ()           -- by empty cases
 
-  efq : (C : ∅ -> Set)-> (x : ∅)-> C x
+  efq : (C : O -> Set)-> (x : O)-> C x
   efq a () 
 
+-- pale imitation of 1
+
   Sole : Set
-  Sole = (x : ∅)-> EFQ x
+  Sole = (x : O)-> EFQ x
 
   EqSole : Sole -> Sole -> Set
-  EqSole s s' = (x : ∅)-> (Id EFQ x) (s x) (s' x)
+  EqSole s s' = (x : O)-> (Id EFQ x) (s x) (s' x)
 
   question2 : (s s' : Sole)-> EqSole s s'
   question2 s s' = efq λ x → (Id EFQ x) (s x) (s' x) 
@@ -45,7 +48,8 @@ module _ where
   question2' s = efq λ x → (Id EFQ x) (s x) (sole x) 
 
 
-  -- can we prove the "strong" elimination rule for Per's N_1.
+  -- can we interpret the "strong" elimination rule of Per's N_1,
+  -- with our "pale imitations"?
   question1 : (C : Sole -> Set)->
              C sole -> (x : Sole)-> C x
   question1 C x₁ x = {!!}   -- probably not
