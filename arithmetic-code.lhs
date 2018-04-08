@@ -1,6 +1,9 @@
 \documentclass{article}
 %include polycode.fmt
 %lhs2TeX.fmt
+%format :^: = ":\!\wedge\hspace{-0.5ex}:\mbox{}" 
+%format :*: = ":\!\times\hspace{-0.5ex}:\mbox{}" 
+%format :+: = ":\!+\hspace{-0.5ex}:\mbox{}" 
 %format ^ = "\wedge"
 %format * = "\times"
 %format <> = "\!\mathop{{}^{{}^{\cdot}}}\!"
@@ -1014,12 +1017,21 @@ return a b  =  a ^ b            -- ie. |return = (^)|
 f `join` s  =  f (return s)     -- ie. |join = ((^)*)|
 \end{spec}
 \begin{code}
-cRet        :: E
+cRet  :: E
 cRet = cE
-cMu         :: E
+cMu   :: E
 cMu  = cE :^: cM
+cMap  :: E
+cMap  = blog "m" (blog "c" (blog "k"  (vm :*: vk) :^: vc))
 \end{code}
 
+We can simply define the bind operator from join and map.
+\begin{code}
+cBind :: E
+cBind = let arg = vm :^: vc :^: cMap in blog "m" (blog "c" (arg :^: cMu))
+\end{code}
+
+\iffalse
 The bind operator |>>=| is not quite as simple.
 \begin{spec}
  (m >>= f) s  = m (f^C . s)
@@ -1031,10 +1043,11 @@ The bind operator |>>=| is not quite as simple.
  f^((>>=)^C)  = (f^(*))^(*) * (^)^(*)
  f^((>>=)^C)  = f^((*)*(*)) * (^)^(*)
 \end{spec}
+\fi
 
-You may interested to see what |callCC| looks like.  That's
-the function whose type is the Kleislified version of 
-Peirce's law:  |((a -> CT b) -> CT a) -> CT a|.
+You may be interested in fancy control operators (like `abort'), and
+flirtations with classical logic.
+The following may reduce your cravings.
 
 Peirce's law: | ((a->b) -> a) -> a |
 is interesting because it is a formula of minimal logic.
@@ -1076,25 +1089,27 @@ $$
 (((\times) \times ((\wedge) \times 0^{(\times)})^{(\wedge)})^{(\times) \times (\wedge)}) \times ((\wedge) + (\wedge))^{(\times)}
 $$ 
 Well, if that's an arithmetical expression of classical logic, it's neither very enlightening or beguiling!
+One can however see some additive features here, namely $(\wedge) + (\wedge)$ and $0$. I find that
+reassuring. 
 
 One can ask the same questions with respect to the Pierce monad.
 
 
 The monadic apparatus can be encoded as follows
 \begin{code}
-ct         :: E -> E
-ct a       = a :^: V "^"                     -- unit
-cb         :: E -> E -> E
-cb m f     = V "^" :*: (f :^: V "*") :*: m  -- bind
-cCTret     :: E
-cCTret     = V"^"
-cCTjoin    :: E
-cCTjoin    = cCTret :^: V"*"
-cCTbind    :: E                             
-cCTbind    = blog "m" (blog "f" (cb (V"m") (V"f")))
+ct         ::  E -> E
+ct a       =   a :^: V "^"                     -- unit
+cb         ::  E -> E -> E
+cb m f     =   V "^" :*: (f :^: V "*") :*: m  -- bind
+cCTret     ::  E
+cCTret     =   V"^"
+cCTjoin    ::  E
+cCTjoin    =   cCTret :^: V"*"
+cCTbind    ::  E                             
+cCTbind    =   blog "m" (blog "f" (cb (V"m") (V"f")))
 \end{code}
 It may be interesting to point out that
-$(a,b) = (a^{[\wedge]}) \times b^{[\wedge]} = \eta a \times eta b$
+$(a,b) = a^{[\wedge]} \times b^{[\wedge]} = \eta a \times \eta b$
 where $\eta$ is the unit of CT.
 
 
