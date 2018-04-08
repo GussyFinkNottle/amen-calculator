@@ -35,28 +35,28 @@ module _ where
   I : Set
   I = (x : O)-> EFQ x
 
-  EqI : I -> I -> Set   
-  EqI s s' = (x : O)-> (Id EFQ x) (s x) (s' x)
+  ExtI : I -> I -> Set   -- extensional equality of empty functions.
+  ExtI s s' = (x : O)-> (Id EFQ x) (s x) (s' x)
 
-  question2 : (s s' : I)-> EqI s s'
+  question2 : (s s' : I)-> ExtI s s'  -- yes, they're all extensionally equal.
   question2 s s' = efq λ x → (Id EFQ x) (s x) (s' x) 
 
   sole : I         -- our favourite inhabitant of I.
   sole = efq EFQ   -- it exists because of EFQ.
 
-  question2' : (s : I)-> EqI s sole
-  question2' s = efq λ x → (Id EFQ x) (s x) (sole x) 
+  question2' : (s : I)-> ExtI s sole  -- hardly worth saying
+  question2' s = question2 s sole 
 
+  {- Per's N₁.  Is it any bloody use? -} 
+  data N₁ : Set where ô : N₁
+  N₁_Elim  :    (C : N₁ -> Set)-> C ô -> (x : N₁)-> C x
+  N₁ C Elim c₁ ô = c₁                
 
   -- can we interpret the "strong" elimination rule of Per's N_1,
   -- with our "pale imitations"?
   question1 :   (C : I -> Set)->
                 C sole -> (x : I)-> C x
-  question1 C x₁ x = {!!}   -- probably not. Is that so bad?
-
-  data N₁ : Set where ô : N₁
-  N₁_Elim  :    (C : N₁ -> Set)-> C ô -> (x : N₁)-> C x
-  N₁ C Elim c₁ ô = c₁                
+  question1 C x₁ x = {!x₁!}   -- probably not.
 
   -- can we prove that any two inhabitants of I are identical?
   question1'   : (s : I)-> (Id I) s sole
