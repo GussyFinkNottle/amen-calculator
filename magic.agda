@@ -1,6 +1,6 @@
 module _ where
-
-{- Investigation of Zero and One types in type-theory.
+{-
+   Investigation of Zero and One types in type-theory.
    Once one has setup Zero, one automatically has a
    "pale imitation" of N_1, Per's standard, inductive data-singleton.
 
@@ -35,14 +35,14 @@ module _ where
   I : Set
   I = (x : O)-> EFQ x
 
-  EqI : I -> I -> Set
+  EqI : I -> I -> Set   
   EqI s s' = (x : O)-> (Id EFQ x) (s x) (s' x)
 
   question2 : (s s' : I)-> EqI s s'
   question2 s s' = efq λ x → (Id EFQ x) (s x) (s' x) 
 
-  sole : I         -- the "solitary" inhabitant of I.
-  sole = efq EFQ
+  sole : I         -- our favourite inhabitant of I.
+  sole = efq EFQ   -- it exists because of EFQ.
 
   question2' : (s : I)-> EqI s sole
   question2' s = efq λ x → (Id EFQ x) (s x) (sole x) 
@@ -50,18 +50,22 @@ module _ where
 
   -- can we interpret the "strong" elimination rule of Per's N_1,
   -- with our "pale imitations"?
-  question1 : (C : I -> Set)->
-             C sole -> (x : I)-> C x
-  question1 C x₁ x = {!!}   -- probably not
+  question1 :   (C : I -> Set)->
+                C sole -> (x : I)-> C x
+  question1 C x₁ x = {!!}   -- probably not. Is that so bad?
+
+  data N₁ : Set where ô : N₁
+  N₁_Elim  :    (C : N₁ -> Set)-> C ô -> (x : N₁)-> C x
+  N₁ C Elim c₁ ô = c₁                
 
   -- can we prove that any two inhabitants of I are identical?
-  question1' : (s : I)-> (Id I) s sole
+  question1'   : (s : I)-> (Id I) s sole
   question1' s = {!refl!}    -- this could be bad. Luo & Healf?
   
-{- It seems one can prove that any two elements
+{- 
+It seems one can prove that any two elements
 of I are extensionally equal, and in particular that any element
 is extensionally equal to our favourite one. 
-But not that our two elements are identical as inhabitants
-of a function type. 
+But not that all elements of this function type are identical.
 -}
     
