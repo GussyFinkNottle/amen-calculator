@@ -45,7 +45,7 @@ main =  let eg = " test $ vc :^: vb :^: va :^: cC "
              ("Load in ghci and type something like: " ++ eg)
 \end{code}
 
-\section{The real-world arithmetical combinators}
+\section{Real-world arithmetical combinators}
 
 Here are some simple definitions of binary operations corresponding to the 
 arithmetical combinators: 
@@ -83,34 +83,39 @@ The type-schemes inferred for the definitions are as follows:
 one      :: a -> a
 \end{code}
 
-For infinitary operations, I need these
+For infinitary operations (this may come later) I need these
 \begin{code}
 pfs :: (a -> a -> a) -> a -> [a] -> [[a]]
 pfs op ze xs = [ b ze | (b,_) <- pfs' xs id]
                where pfs' (x:xs) b = pfs' xs (b . (op x))
+
 type EE x = x -> x
-type N x = EE (EE x)
 pi    :: [EE a] -> [[EE a]]
 sigma :: [a -> EE b] -> [[a -> EE b]]
 pi    = pfs (*) one
 sigma = pfs (+) zero
 
+type N x = EE (EE x)
 index        :: N [a] -> [a] -> a
 index n         = head . n tail
+-- note index 0 is head
 
 type C x y = (x -> y) -> y
 ret :: x -> C x y
 ret = (^)
 mu  :: C (C x y) y -> C x y
 mu mm k = mm (ret k)
--- x -> C x x and N x are isomorphic. 
-
+-- x -> C x x and N x are isomorphic.
+-- With the same combinator in the inverse directions!
 myflip :: (x -> C x x) -> N x
 myflip = flip 
 myflip' :: N x -> x -> C x x
 myflip' = flip 
 
-mydrop :: (([a] -> [a]) -> t) -> t  -- unifies with N [a] -> EE [a]
+mydrop :: C (EE [a]) y 
+-- mydrop :: (([a] -> [a]) -> t) -> t  -- unifies with N [a] -> EE [a]
+-- mydrop :: (EE [a] -> t) -> t  -- When t= EE [a], unifies with N [a] -> EE [a]
+-- mydrop :: N [a] -> EE [a]  
 mydrop n  = n tail
 mydrop'   = ($ tail)
 \end{code}
