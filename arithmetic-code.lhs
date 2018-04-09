@@ -469,7 +469,7 @@ fvs e = nodups $ f e []
 
 \appendix
 
-\section{Bureaucracy and basic gadgetry}
+\section{Bureaucracy and gadgetry}
 
 To save typing, names for all single-letter variables
 \begin{code}
@@ -494,7 +494,7 @@ c10      = c2      :*: c5
 \end{code}
 |c0| and |c1| have already been defined.
 
-It is time we had an combinator for successor ($[+] \times 1^{[\wedge]}$, by the way). 
+It is time we had an combinator for successor ($(+) \times 1^{(\wedge)}$, by the way). 
 \begin{code}
 cSuc :: E
 cSuc = blog "x" (vx :+: c1)
@@ -502,7 +502,7 @@ cSuc = blog "x" (vx :+: c1)
 cN :: Int -> E    -- allows inputting numerals in decimal.
 cN n = let x = c0 : [ t :+: c1 | t <- x ] in x !! n
 
-cN_suggestion = "test $ vz :^: vf :^: cN 7"
+cN_suggestion = "test $ vz :^: vs :^: cN 7"
 
 {- Somehow allow decimal output, when possible? -}
 {- |dN :: N a -> Int   |-}
@@ -519,11 +519,16 @@ If one wants to investigate reduction sequences of arithmetical
 expressions by running this code, one needs to display them.
 To display expressions, we use the following code,
 which is slightly less noisy than the built in show instance.
-It should supress parentheses with associative operators.
+It should supress parentheses with associative operators, so
+sometimes the same expression appears to be repeated.
 (I think everything is right associative: as with |^|, so
 with the other operators.)
 I write the constant combinators in square brackets, which may
 be considered noisy.
+Actually, it might be more useful for printing to use one
+level of superscripts, as when type-setting latex code.
+There is at least half a chance of a human being making out
+some structure in a string of arithmetical gibberish.
 
 I don't understand precedences very well. I think the following
 deals properly with associativity of |+| and |*|, and their
@@ -730,6 +735,157 @@ run inp n =
               iteration n = n step start
 \end{code}
 \fi
+
+\section{Parsing}
+
+Is it even worth thinking about this?  The interpreter gives a
+fine language for defining expressions, using let expressions, etc.
+
+Something changed in ghc 7.10.2 making it a fuss to write simple parsers.
+Applicative is bound up with monads, and they have stolen |<*>|. If
+I hide that, I hide monads, and can't use do notation. 
+
+\subsection{(parsing) combinators}
+\begin{code}
+
+-- PARSERS.
+-- t is the token type, v the parsed value. 
+newtype Parser t v =  Parser {prun :: [t] -> [(v,[t])]}
+
+
+sat :: (t -> Bool) -> Parser t t
+sat p  = Parser f where f (t:ts)  =   if p t then [(t,ts)] else []
+                        f []      =   []
+
+lit :: Eq t => t -> Parser t t
+lit t  = sat (== t)
+
+-- composes a sequence of N parsers that return things of the same type A
+-- into a parser that returns a list in A* of length N. 
+fby :: Parser t a -> Parser t [a] -> Parser t [a] 
+fby p q 
+  = Parser (\s-> [((v:vs),s'') | (v,s') <- prun p s, (vs,s'') <- prun q s' ])
+
+fby2 :: Parser t a -> Parser t b -> (a -> b -> c) -> Parser t c
+fby2 p q f
+  = Parser (\s->
+              [ (f v v',s'')  | (v,s') <- prun p s
+                              , (v',s'') <- prun q s' ])
+
+grdl :: Parser t a -> Parser t b -> Parser t b
+grdr :: Parser t a -> Parser t b -> Parser t a
+grdl p q 
+  = Parser (\s-> [ (b,s'') | (_,s') <- prun p s, (b,s'') <- prun q s' ])
+grdr p q 
+  = Parser (\s-> [ (a,s'') | (a,s') <- prun p s, (_,s'') <- prun q s' ])
+paren p 
+  = Parser (\s-> [ (a,s''') | (_,s')   <- prun (lit Lpar) s
+                            , (a,s'')  <- prun p s'
+                            , (_,s''') <- prun (lit Rpar) s''])
+
+
+alt :: Parser t a -> Parser t a -> Parser t a
+alt p q  = Parser (\s-> prun p s ++ prun q s)
+
+alts :: [Parser t a] -> Parser t a
+alts ps  = Parser (\s->concat [ prun p s | p <- ps ])
+
+empty :: Parser t [a]
+empty = Parser (\s->[([],s)]) 
+
+rep, rep1 :: Parser t a -> Parser t [a]
+rep p = rep1 p `alt` empty 
+rep1 p = p `fby` rep p 
+
+repsep :: Parser t a -> Parser t b -> Parser t [a]
+repsep p sep = p `fby` rep (sep `grdl` p)
+
+\end{code}
+
+\subsection{scanner}
+\begin{code}
+-- SCANNER.
+-- turns a stream of characters into a stream of tokens.
+
+-- import Data.Char
+
+is_alphabetic c = 'a' <= (c :: Char) && c <= 'z' || 'A' <= c && c <= 'Z'
+is_digit      c = '0' <= (c :: Char) && c <= '9' 
+is_idchar     c = c `elem` "_." || is_alphabetic c || is_digit c 
+is_space      c = c == ' '
+is_par        c = c `elem` "()"
+is_symch      c = not (is_par c || is_space c)
+
+data Tok = Id String | Num Int |
+           Sym String | Lpar | Rpar
+           deriving (Show,Eq)
+tokens :: String -> [Tok]
+tokens [] = []
+tokens (c:cs) | isSpace c = tokens cs
+tokens (inp@('(':cs)) 
+          = Lpar : tokens cs
+tokens (inp@(')':cs)) 
+          = Rpar : tokens cs 
+tokens (c:cs) | is_alphabetic c
+          = id_t (c:) cs where
+                id_t b [] = [Id (b [])]
+                id_t b (c:cs) | is_idchar c = id_t (b . (c :)) cs
+                id_t b inp         = Id (b []): tokens inp 
+tokens (c:cs) 
+          = id_t (c:) cs where
+                id_t b [] = [Sym (b [])]
+                id_t b (c:cs) | is_symch c = id_t (b . (c :)) cs
+                id_t b inp               = Sym (b []): tokens inp 
+
+\end{code}
+
+\subsection{grammar}
+\begin{code}
+-- GRAMMAR
+
+variable :: Parser Tok E
+variable = Parser p where
+            p (Id st : ts) = [(V st,ts)]
+            p _            = []
+
+constant :: Parser Tok E
+constant = Parser p where
+            p (Sym st : ts) = [(V st,ts)]
+            p _            = []
+
+atomic         = variable `alt` constant `alt` paren expression
+additive       = Parser (\s-> [ (fo (:+:) x xs ,s')
+                              | ((x:xs),s') <-
+                                   prun (repsep multiplicative (lit (Sym "+"))) s ])
+multiplicative = Parser (\s-> [ (fo (:*:) x xs ,s')
+                              | ((x:xs),s') <-
+                                   prun (repsep exponential (lit (Sym "*"))) s ])
+exponential    = Parser (\s-> [ (fo (:^:) x xs ,s')
+                              | ((x:xs),s') <-
+                                   prun (repsep atomic (lit (Sym "^"))) s ])
+expression     = additive
+
+discard        = Parser (\s-> [ (fo (:<>:) x xs ,s')
+                              | ((x:xs),s') <-
+                                   prun (repsep atomic
+                                           ((lit (Sym "!"))
+                                            `alt` lit (Sym "<>"))) s
+                              ])
+
+\end{code}
+
+\begin{code}
+-- foldr1 ? 
+fo op fst [] = fst
+fo op fst (x:xs) = fst `op` fo op x xs 
+
+-- instance Read E where
+--  readsPrec d = prun expression . tokens
+
+rdexp :: String -> E
+rdexp = fst . head . prun expression . tokens
+\end{code}
+
 
 \section{Examples} 
 
@@ -1265,147 +1421,6 @@ In fact we have forms of definition by finite cases.
 
 
 %\iffalse
-\subsection{A simple parser}
-
-Is it even worth thinking about this?  The interpreter gives a
-fine language for defining expressions, using let expressions, etc.
-
-Something changed in ghc 7.10.2 making it a fuss to write simple parsers.
-Applicative is bound up with monads, and they have stolen |<*>|. If
-I hide that, I hide monads, and can't use do notation. 
-
-\begin{code}
-
--- PARSERS.
--- t is the token type, v the parsed value. 
-newtype Parser t v =  Parser {prun :: [t] -> [(v,[t])]}
-
-
-sat :: (t -> Bool) -> Parser t t
-sat p  = Parser f where f (t:ts)  =   if p t then [(t,ts)] else []
-                        f []      =   []
-
-lit :: Eq t => t -> Parser t t
-lit t  = sat (== t)
-
--- composes a sequence of N parsers that return things of the same type A
--- into a parser that returns a list in A* of length N. 
-fby :: Parser t a -> Parser t [a] -> Parser t [a] 
-fby p q 
-  = Parser (\s-> [((v:vs),s'') | (v,s') <- prun p s, (vs,s'') <- prun q s' ])
-
-fby2 :: Parser t a -> Parser t b -> (a -> b -> c) -> Parser t c
-fby2 p q f
-  = Parser (\s->
-              [ (f v v',s'')  | (v,s') <- prun p s
-                              , (v',s'') <- prun q s' ])
-
-grdl :: Parser t a -> Parser t b -> Parser t b
-grdr :: Parser t a -> Parser t b -> Parser t a
-grdl p q 
-  = Parser (\s-> [ (b,s'') | (_,s') <- prun p s, (b,s'') <- prun q s' ])
-grdr p q 
-  = Parser (\s-> [ (a,s'') | (a,s') <- prun p s, (_,s'') <- prun q s' ])
-paren p 
-  = Parser (\s-> [ (a,s''') | (_,s')   <- prun (lit Lpar) s
-                            , (a,s'')  <- prun p s'
-                            , (_,s''') <- prun (lit Rpar) s''])
-
-
-alt :: Parser t a -> Parser t a -> Parser t a
-alt p q  = Parser (\s-> prun p s ++ prun q s)
-
-alts :: [Parser t a] -> Parser t a
-alts ps  = Parser (\s->concat [ prun p s | p <- ps ])
-
-empty :: Parser t [a]
-empty = Parser (\s->[([],s)]) 
-
-rep, rep1 :: Parser t a -> Parser t [a]
-rep p = rep1 p `alt` empty 
-rep1 p = p `fby` rep p 
-
-repsep :: Parser t a -> Parser t b -> Parser t [a]
-repsep p sep = p `fby` rep (sep `grdl` p)
-
-
--- SCANNER.
--- turns a stream of characters into a stream of tokens.
-
--- import Data.Char
-
-is_alphabetic c = 'a' <= (c :: Char) && c <= 'z' || 'A' <= c && c <= 'Z'
-is_digit      c = '0' <= (c :: Char) && c <= '9' 
-is_idchar     c = c `elem` "_." || is_alphabetic c || is_digit c 
-is_space      c = c == ' '
-is_par        c = c `elem` "()"
-is_symch      c = not (is_par c || is_space c)
-
-data Tok = Id String | Num Int |
-           Sym String | Lpar | Rpar
-           deriving (Show,Eq)
-tokens :: String -> [Tok]
-tokens [] = []
-tokens (c:cs) | isSpace c = tokens cs
-tokens (inp@('(':cs)) 
-          = Lpar : tokens cs
-tokens (inp@(')':cs)) 
-          = Rpar : tokens cs 
-tokens (c:cs) | is_alphabetic c
-          = id_t (c:) cs where
-                id_t b [] = [Id (b [])]
-                id_t b (c:cs) | is_idchar c = id_t (b . (c :)) cs
-                id_t b inp         = Id (b []): tokens inp 
-tokens (c:cs) 
-          = id_t (c:) cs where
-                id_t b [] = [Sym (b [])]
-                id_t b (c:cs) | is_symch c = id_t (b . (c :)) cs
-                id_t b inp               = Sym (b []): tokens inp 
-
-
-
--- GRAMMAR
-
-variable :: Parser Tok E
-variable = Parser p where
-            p (Id st : ts) = [(V st,ts)]
-            p _            = []
-
-constant :: Parser Tok E
-constant = Parser p where
-            p (Sym st : ts) = [(V st,ts)]
-            p _            = []
-
-atomic         = variable `alt` constant `alt` paren expression
-additive       = Parser (\s-> [ (fo (:+:) x xs ,s')
-                              | ((x:xs),s') <-
-                                   prun (repsep multiplicative (lit (Sym "+"))) s ])
-multiplicative = Parser (\s-> [ (fo (:*:) x xs ,s')
-                              | ((x:xs),s') <-
-                                   prun (repsep exponential (lit (Sym "*"))) s ])
-exponential    = Parser (\s-> [ (fo (:^:) x xs ,s')
-                              | ((x:xs),s') <-
-                                   prun (repsep atomic (lit (Sym "^"))) s ])
-expression     = additive
-
-discard        = Parser (\s-> [ (fo (:<>:) x xs ,s')
-                              | ((x:xs),s') <-
-                                   prun (repsep atomic
-                                           ((lit (Sym "!"))
-                                            `alt` lit (Sym "<>"))) s
-                              ])
-
--- foldr1 ? 
-fo op fst [] = fst
-fo op fst (x:xs) = fst `op` fo op x xs 
-
--- instance Read E where
---  readsPrec d = prun expression . tokens
-
-rdexp :: String -> E
-rdexp = fst . head . prun expression . tokens
-\end{code}
-
 
 \section{Benedicto benedicatur} 
 
