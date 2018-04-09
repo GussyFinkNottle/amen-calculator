@@ -1,4 +1,5 @@
 \documentclass{article}
+\usepackage{hyperref}
 %include polycode.fmt
 %lhs2TeX.fmt
 %format :^: = ":\!\wedge\hspace{-0.5ex}:\mbox{}" 
@@ -13,6 +14,7 @@
 \newcommand{\ie}{\textit{ie.\hspace{0.5ex}}}
 \newcommand{\eg}{\textit{eg.\hspace{0.5ex}}}
 \newcommand{\etc}{\textit{\&{}co.\hspace{0.5ex}}}
+\newcommand{\logarythm}{$\lambda$ogarythm}
 
 \begin{document}
 \maketitle
@@ -384,9 +386,9 @@ usually to be the one that interest me.
 
 
 
-\section{B{\"o}hm's logarythms}
+\section{B{\"o}hm's \logarythm} 
 
-This code generating the logarythm of an expression
+This code generating the \logarythm of an expression
 with respect to a variable name.
 
 B{\"o}hm's combinators
@@ -478,7 +480,7 @@ c10      = c2      :*: c5
 
 \section{Displaying}
 
-\subsection{expressions} 
+\subsection{Expressions} 
     
 If one wants to investigate reduction sequences of arithmetical
 expressions by running this code, one needs to display them.
@@ -526,7 +528,7 @@ instance Show E where showsPrec _ e = showE e 0
 \end{code}
 
 
-\subsection{trees and lists} 
+\subsection{Trees and lists} 
 
 
 Code to display a numbered list of showable things, throwing a line between entries.
@@ -566,7 +568,7 @@ nodups [] = []
 nodups (x:xs) = x : nodups (filter (/= x) xs)
 \end{code}
 
-\subsection{Some interesting things to use}
+\subsection{Some top-level commands} 
 
 The first reduction sequence. This is by far the most useful. One might type something like
 \begin{spec}
@@ -578,18 +580,18 @@ test  = NList . head . rss
 \end{code}
 
 The normal form. This is occasionally useful when evaluation will obviously
-terminate.  The normal form is displayed.
+terminate.  Only the normal form is displayed. 
 \begin{spec}
          eval $ vz :^: vy :^: vx :^: cS
 \end{spec}
 
-The n'th reduction sequence.
+Display the n'th reduction sequence in a reduction tree.
 \begin{code}
 nth_rs :: Int -> E -> NList E 
 nth_rs n = NList . (!! n) . rss 
 \end{code}
 
-Code to display an |NTree a| that uses indentation in an attempt to make the
+Display an entire |NTree a|.  Uses indentation in an attempt to make the
 branching structure of the tree visible.
 (Actually, this is almost entirely useless, except for very small expressions)
 \begin{code}
