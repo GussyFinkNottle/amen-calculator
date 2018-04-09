@@ -83,6 +83,7 @@ The type-schemes inferred for the definitions are as follows:
 one      :: a -> a
 \end{code}
 
+\subsection{Infinitary operations: streams and lists}
 For infinitary operations (this may come later) I need these
 \begin{code}
 pfs :: (a -> a -> a) -> a -> [a] -> [[a]]
@@ -105,17 +106,18 @@ ret :: x -> C x y
 ret = (^)
 mu  :: C (C x y) y -> C x y
 mu mm k = mm (ret k)
--- x -> C x x and N x are isomorphic.
--- With the same combinator in the inverse directions!
+{- The types |x -> C x x| and |N x| are isomorphic. -}
+{- The same combinator is used in both inverse directions! -}
 myflip :: (x -> C x x) -> N x
 myflip = flip 
 myflip' :: N x -> x -> C x x
 myflip' = flip 
 
+-- any of the following type statements will do
 mydrop :: C (EE [a]) y 
--- mydrop :: (([a] -> [a]) -> t) -> t  -- unifies with N [a] -> EE [a]
--- mydrop :: (EE [a] -> t) -> t  -- When t= EE [a], unifies with N [a] -> EE [a]
--- mydrop :: N [a] -> EE [a]  
+-- | mydrop :: (([a] -> [a]) -> t) -> t  |
+-- | mydrop :: (EE [a] -> t) -> t  |
+-- | mydrop :: N [a] -> EE [a]  |
 mydrop n  = n tail
 mydrop'   = ($ tail)
 \end{code}
@@ -154,7 +156,7 @@ should be interpreted as $\zeta$-equations, unless I say otherwise.
 
 It may be that to determine the behaviour of an expression as an
 exponent, we have to supply it with more than one base-variable.
-Sometimes, "extra" variables play a role in allowing computations
+Sometimes, `extra' variables play a role in allowing computations
 to proceed, and subsequently can be cancelled.
   
 \section{Evaluating arithmetical expressions}
@@ -194,7 +196,16 @@ different binary `cons' operations, each with an distinct arithmetical flavour.
 It is convenient to have atomic constants identified by arbitrary strings.
 The constants |"+"|, |"*"|, |"^"|, |"0"|, |"1"| are treated specially.
 \begin{code}
-(cA,cM,cE,c0,c1,cC_new,cPair_new,c0') = (V"+",V"*",V"^",V"0",V"1",V"~",V"&",V"<>")
+(cA, cM, cE, c0, c1, cC_new, cPair_new, c0')
+  = ( V"+"        -- AMEN
+    , V"*"
+    , V"^"
+    , V"0"
+    , V"1"        -- de trop combinators
+    , V"~"        -- flip
+    , V"&"        -- pairing
+    , V"<>"       -- discard left-hand argument
+    )
 \end{code}
 
 For each arithmetical operator, we define a function that takes two
@@ -460,7 +471,7 @@ fvs e = nodups $ f e []
 
 \section{Bureaucracy and basic gadgetry}
 
-To save typing, some names for variables
+To save typing, names for all single-letter variables
 \begin{code}
 ( va, vb, vc, vd, ve, vf, vg, vh, vi, vj, vk, vl, vm, vn,
   vs, vt, vu, vv, vw, vx, vy, vz) 
@@ -482,6 +493,23 @@ c9       = c3      :^: c2
 c10      = c2      :*: c5
 \end{code}
 |c0| and |c1| have already been defined.
+
+It is time we had an combinator for successor ($[+] \times 1^{[\wedge]}$, by the way). 
+\begin{code}
+cSuc :: E
+cSuc = blog "x" (vx :+: c1)
+
+cN :: Int -> E    -- allows inputting numerals in decimal.
+cN n = let x = c0 : [ t :+: c1 | t <- x ] in x !! n
+
+cN_demo = "test $ vz :^: vf :^: cN 7"
+
+{-
+dN :: N a -> Int   -- somehow allow decimal output, when possible.
+dN e = e (+1) 0
+-}
+\end{code}
+
 
 \section{Displaying}
 
@@ -931,10 +959,6 @@ the successor of multiplication
 to the value |sap|.
 \begin{code}
 cY_C = cSap :^: cM :^: cSuc 
-\end{code}
-It is time we had an combinator for successor ($[+] \times 1^{[\wedge]}$, by the way). 
-\begin{code}
-cSuc = blog "x" (vx :+: c1)
 \end{code}
 
 Turing's combinator is  |T ^ T| %, \ie{} |T ^ sap|
