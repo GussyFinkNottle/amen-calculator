@@ -502,12 +502,12 @@ cSuc = blog "x" (vx :+: c1)
 cN :: Int -> E    -- allows inputting numerals in decimal.
 cN n = let x = c0 : [ t :+: c1 | t <- x ] in x !! n
 
-cN_demo = "test $ vz :^: vf :^: cN 7"
+cN_suggestion = "test $ vz :^: vf :^: cN 7"
 
-{-
-dN :: N a -> Int   -- somehow allow decimal output, when possible.
-dN e = e (+1) 0
--}
+{- Somehow allow decimal output, when possible? -}
+{- |dN :: N a -> Int   |-}
+{- |dN e = e (+1) 0 |-}
+
 \end{code}
 
 

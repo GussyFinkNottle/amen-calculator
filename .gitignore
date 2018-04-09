@@ -1,8 +1,9 @@
-*tex
-*aux
-*hi
+*\.tex
+*\.aux
+*\.hi
 *~
-*log
-*ptb
+*\.log
+*\.ptb
 *\.o
 *\.toc
+*\.out
