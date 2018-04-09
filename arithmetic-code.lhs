@@ -10,7 +10,7 @@
 %format <> = "\!\mathop{{}^{{}^{\cdot}}}\!"
 
 
-\title{A Turing complete arithmetical calculator}
+\title{The AMEN calculator}
 \newcommand{\ie}{\textit{ie.\hspace{0.5ex}}}
 \newcommand{\eg}{\textit{eg.\hspace{0.5ex}}}
 \newcommand{\etc}{\textit{\&{}co.\hspace{0.5ex}}}
