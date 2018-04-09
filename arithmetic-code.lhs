@@ -13,7 +13,10 @@
 \newcommand{\ie}{\textit{ie.\hspace{0.5ex}}}
 
 \begin{document}
-\maketitle 
+\maketitle
+\tableofcontents
+
+\section{Benedictus benedicat}
 Some haskell boilerplate. We are going to play around with
 the ordinary arithmetical symbols, and versions of these
 symbols in angle-brackets eg. |<+>|.
@@ -1228,7 +1231,7 @@ can be defined as | a*sg(b)+c*sgbar(b) |.
 In fact we have forms of definition by finite cases.
 
 
-\iffalse
+%\iffalse
 \subsection{A simple parser}
 
 Is it even worth thinking about this?  The interpreter gives a
@@ -1371,7 +1374,9 @@ rdexp = fst . head . prun expression . tokens
 \end{code}
 
 
-Some terms to explore:
+\section{Benedicto benedicatur} 
+
+Once used, with |test|, to demo some evaluations.
 \begin{code}
 
 demo1Add     = let d = va :+: vb
@@ -1396,13 +1401,10 @@ demoAdd'    = let c = (va :^: V"^") :+: (vb :^: V"^")
 
 demoNaught  = let d = V"0" :*: V"0" :^: V"^" in d
 \end{code}
-\iffalse
- test $ vx :^: ((va :^: cPair) :*: (vb :^: V"^"))
---demonstrates that a ^ b = a ^ cPair :*: b ^ cE
-\fi
-\fi
+%\fi
 \end{document}
 
+Safe place for debris:
 
 *Main> let l = V"*" :*: cB :*: (V"+" :^: V"*") ; r = V"*" :+: (V"+" :^: cK) :+: (V"*" :*: V"*") in test (vc :^: vb :^: va :^: l)
 
@@ -1418,3 +1420,8 @@ let b = vz :^: vy :^: vx ;
     p = (p0 b :&: p1 b :&: p2 b :&: p3 b :&: p4 b :&: p5 b) in test $p
 
 let t = cE :*: cC ; vec h = vc :^: vb :^: va :^: h in test $ vx :^: (vec t :&: vec cPair)
+
+\iffalse
+ test $ vx :^: ((va :^: cPair) :*: (vb :^: V"^"))
+--demonstrates that a ^ b = a ^ cPair :*: b ^ cE
+\fi
