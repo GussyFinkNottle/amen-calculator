@@ -11,6 +11,8 @@
 
 \title{A Turing complete arithmetical calculator}
 \newcommand{\ie}{\textit{ie.\hspace{0.5ex}}}
+\newcommand{\eg}{\textit{eg.\hspace{0.5ex}}}
+\newcommand{\etc}{\textit{\&{}co.\hspace{0.5ex}}}
 
 \begin{document}
 \maketitle
@@ -115,7 +117,7 @@ Think of it is a stream of finite lists, namely the list of finite
 prefixes of a stream. Then we fold an operation over each list, starting
 with a constant. 
 
-\section{a syntactical view}
+\section{Syntax-world arithmetical combinators}
 
 The defining equations above generate an equivalence relation between
 (possibly open) terms in a signature with eight operators:
@@ -343,7 +345,7 @@ reducts :: E -> [ E ]
 reducts a     = [ f a'' | (f,a') <- sites a, a'' <- tlr a' ]
 \end{code}
 
-\subsection{holding reduction sequences in a tree}
+\subsection{The tree of reduction sequences, and access to it}
 
 We need a structure to hold the reduction sequences from an
 expression.  So-called `rose' trees, with nodes labelled with
@@ -1194,7 +1196,7 @@ cOzero = V"0"
 cO :: Int -> E    -- allows inputting numerals in decimal.
 cO n = let x = cOzero : [cOsuc t | t <- x ] in x !! n 
 \end{code}
-\subsection{sgbar}
+\subsection{sgbar, \etc{}}
 
 
 |sgbar|, or exponentiation to base zero, is the function which is 1 at
