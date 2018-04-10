@@ -623,7 +623,7 @@ Code to display a numbered list of showable things, throwing a line between entr
 newtype NList a = NList [a]
 instance Show a => Show (NList a) where
    showsPrec _ (NList es) = 
-      (composelist . commalist ('\n':) . map showline . enum ) es
+      (composelist . commafy ('\n':) . map showline . enum ) es
       where showline (n,e) = shows n . showString ": " . shows e 
 \end{code}
 
@@ -642,9 +642,9 @@ composelist = foldr (.) id
 
 Code to insert a `comma' at intervening positions in a stream.
 \begin{code}
-commalist :: a -> [a] -> [a]
-commalist c (x:(xs'@(_:_))) = x:c:commalist c xs' 
-commalist c xs = xs
+commafy :: a -> [a] -> [a]
+commafy c (x:(xs'@(_:_))) = x:c:commafy c xs' 
+commafy c xs = xs
 \end{code}
 
 Remove duplicates from a list/stream. The order in which entries are
@@ -1151,20 +1151,22 @@ TODO: code some expressions
 \subsection{Permutations}
 
 \begin{code}
-b1, b2, b3, b4, b5, b6 :: E
-b1 = vc :^: vb :^: va    -- id
-b2 = vb :^: vc :^: va    -- flip (2-chain)
-b3 = vc :^: va :^: vb    -- exp  (2-chain)
-b4 = va :^: vc :^: vb    -- bury/rotate-down (3-chain)
-b5 = vb :^: va :^: vc    -- pair/rotate-up (3-chain)
-b6 = va :^: vb :^: vc    -- flipped pair (2-chain)
-pargs3 :: E -> E
-pargs3 = (vz :^:) . (vy :^:) . (vx :^:)
-bargs3 :: E -> E
-bargs3 =  blog "a" . blog "b" . blog "c"
-see_perms = let f = eval . pargs3 . bargs3
---                    blog "a" . blog "b" . blog "c"
-            in (f b1, f b2, f b3, f b4, f b5, f b6)
+perms_abc :: [E]
+perms_abc =
+  [ vc :^: vb :^: va    -- id
+  , vc :^: va :^: vb    -- exp  (2-chain)
+  , vb :^: vc :^: va    -- flip (2-chain)
+  , va :^: vc :^: vb    -- bury/rotate-down (3-chain)
+  , vb :^: va :^: vc    -- pair/rotate-up (3-chain)
+  , va :^: vb :^: vc    -- flipped pair (2-chain)
+  ]
+inst_xyz :: E -> E
+inst_xyz = (vz :^:) . (vy :^:) . (vx :^:)
+bind_abc :: E -> E
+bind_abc  =  blog "a" . blog "b" . blog "c"
+c_perms :: [E] -- list of permutation combinators
+c_perms   =  fmap (eval . bind_abc) perms_abc
+see_perms = NList (fmap (eval . inst_xyz) c_perms) 
 \end{code}
 
 \subsection{Fixpoint operators}
