@@ -82,6 +82,14 @@ The type-schemes inferred for the definitions are as follows:
 (<>)     :: a -> b -> b
 one      :: a -> a
 \end{code}
+Anyone should think:
+\begin{itemize}
+\item continuation transform
+\item action of contravariant functor |_ -> c| on morphisms
+\item lifted version of the above
+\item |const id|
+\item |id|
+\end{itemize}
 
 \subsection{Infinitary operations: streams and lists}
 For infinitary operations (this may come later) I need these
@@ -125,6 +133,23 @@ mydrop'   = ($ tail)
 Think of it is a stream of finite lists, namely the list of finite
 prefixes of a stream. Then we fold an operation over each list, starting
 with a constant. 
+
+\subsection{Booleans}
+
+I wanted to look at Church encoding of booleans.
+\begin{code}
+type I2 a b c = a -> b -> c
+impB  ::  I2 (I2 a b c) (I2 b d a) (I2 b d c)
+orB   ::  I2 (I2 a b c) (I2 a d b) (I2 a d c)
+andB  ::  I2 (I2 a b c) (I2 d b a) (I2 d b c)
+posB  ::  I2 a b a
+nilB  ::  I2 a b b
+impB  a b p n  =  a (b p n) p
+orB   a b p n  =  a p (b p n)  -- unifies with addition
+andB  a b p n  =  a (b p n) n
+posB  =  const 
+nilB  =  zero  
+\end{code}
 
 \section{Syntax-world arithmetical combinators}
 
@@ -224,38 +249,7 @@ infixr 6  <+>
 
 \begin{code}
 (<+>),(<*>),(<^>),(<<>>) :: E -> E -> E
-{- EXPERIMENT
-V"0" <+> b            = b
-a    <+> V"0"         = a
-a    <+> (b1 :+: b2)  = (a <+> b1) <+> b2
-a    <+> b            = a :+: b
 
-(_ :^: V"0") <*> b    = b
-V"1" <*> b            = b
-a    <*> (_ :^: V"0")  = a
-a    <*> V"1"          = a
-a    <*> (b1 :*: b2)   = (a <*> b1) <*> b2
-a    <*> V"0"          = V"0"
-a    <*> (b1 :+: b2)   = (a <*> b1) <+> (a <*> b2)
-a    <*> b             = a :*: b
-
-a    <^> V"0"          = V"1" -- V"0" :^: V"0"
-a    <^> (b1 :+: b2)   = (a <^> b1) <*> (a <^> b2)
-a    <^> V"1"          = a 
-a    <^> (_ :^: V"0")  = a
-a    <^> (b1 :*: b2)   = (a <^> b1) <^> b2
-
-a    <^> (b1 :^: V"1")   = a  <^> b1
-a    <^> (b1 :^: _ :^: V"0")   = a  <^> b1
-a    <^> (b1 :^: V"^")   = b1 <^> a   -- note: destroys termination
-a    <^> (b1 :^: V"*")   = b1 <*> a
-a    <^> (b1 :^: V"+")   = b1 <+> a
-a    <^> (b1 :^: b2)     = a :^: (b1 <^> b2) 
-
-_ <<>>  b               = b
--}
-
--- {-  TEMP
 a <+> b = case a of  V "0"         -> b
                      _             -> case b of  V "0"         -> a
                                                  b1 :+: b2     -> (a <+> b1) <+> b2
@@ -283,7 +277,7 @@ a <^> b = case b of  V "0"         -> b :^: b
                      b1 :^: b2     -> a :^: (b1 <^> b2) 
                      _             -> a :^: b 
 _ <<>> b = b
--- -}
+
 \end{code}
 
 The following (partial!) function then evaluates an arithmetic
@@ -643,7 +637,7 @@ composelist = foldr (.) id
 Code to insert a `comma' at intervening positions in a stream.
 \begin{code}
 commafy :: a -> [a] -> [a]
-commafy c (x:(xs'@(_:_))) = x:c:commafy c xs' 
+commafy c (x:(xs'@( _ : _ ))) = x:c:commafy c xs' 
 commafy c xs = xs
 \end{code}
 
@@ -1557,3 +1551,41 @@ let t = cE :*: cC ; vec h = vc :^: vb :^: va :^: h in test $ vx :^: (vec t :&: v
  test $ vx :^: ((va :^: cPair) :*: (vb :^: V"^"))
 --demonstrates that a ^ b = a ^ cPair :*: b ^ cE
 \fi
+
+{-
+\begin{code}
+{- EXPERIMENT -}
+
+V"0" <+> b            = b
+a    <+> V"0"         = a
+a    <+> (b1 :+: b2)  = (a <+> b1) <+> b2
+a    <+> b            = a :+: b
+
+(_ :^: V"0") <*> b    = b
+V"1" <*> b            = b
+a    <*> (_ :^: V"0")  = a
+a    <*> V"1"          = a
+a    <*> (b1 :*: b2)   = (a <*> b1) <*> b2
+a    <*> V"0"          = V"0"
+a    <*> (b1 :+: b2)   = (a <*> b1) <+> (a <*> b2)
+a    <*> b             = a :*: b
+
+a    <^> V"0"          = V"1" -- V"0" :^: V"0"
+a    <^> (b1 :+: b2)   = (a <^> b1) <*> (a <^> b2)
+a    <^> V"1"          = a 
+a    <^> (_ :^: V"0")  = a
+a    <^> (b1 :*: b2)   = (a <^> b1) <^> b2
+
+a    <^> (b1 :^: V"1")   = a  <^> b1
+a    <^> (b1 :^: _ :^: V"0")   = a  <^> b1
+a    <^> (b1 :^: V"^")   = b1 <^> a   -- note: destroys termination
+a    <^> (b1 :^: V"*")   = b1 <*> a
+a    <^> (b1 :^: V"+")   = b1 <+> a
+a    <^> (b1 :^: b2)     = a :^: (b1 <^> b2) 
+
+_ <<>>  b               = b
+{- expletives deleted -}
+
+{- OLDER -}
+\end{code}
+-}
