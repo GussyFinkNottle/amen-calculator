@@ -179,13 +179,14 @@ infixr 6  :+:
 \end{code}
 
 \begin{code}
-data E  = V String  | C String
+data E  = V String
+          | C String        -- experiment
           | E :^: E
           | E :*: E
           | E :+: E
-          | E :<>: E
-          | E :~: E         -- flip
-          | E :&: E         -- pairing
+          | E :<>: E        -- indirection 
+          | E :~: E         -- flip (experiment)
+          | E :&: E         -- pairing (experiment)
           deriving  (Eq) -- (Show,Eq) 
 \end{code}
 
@@ -223,26 +224,66 @@ infixr 6  <+>
 
 \begin{code}
 (<+>),(<*>),(<^>),(<<>>) :: E -> E -> E
+{- EXPERIMENT
+V"0" <+> b            = b
+a    <+> V"0"         = a
+a    <+> (b1 :+: b2)  = (a <+> b1) <+> b2
+a    <+> b            = a :+: b
+
+(_ :^: V"0") <*> b    = b
+V"1" <*> b            = b
+a    <*> (_ :^: V"0")  = a
+a    <*> V"1"          = a
+a    <*> (b1 :*: b2)   = (a <*> b1) <*> b2
+a    <*> V"0"          = V"0"
+a    <*> (b1 :+: b2)   = (a <*> b1) <+> (a <*> b2)
+a    <*> b             = a :*: b
+
+a    <^> V"0"          = V"1" -- V"0" :^: V"0"
+a    <^> (b1 :+: b2)   = (a <^> b1) <*> (a <^> b2)
+a    <^> V"1"          = a 
+a    <^> (_ :^: V"0")  = a
+a    <^> (b1 :*: b2)   = (a <^> b1) <^> b2
+
+a    <^> (b1 :^: V"1")   = a  <^> b1
+a    <^> (b1 :^: _ :^: V"0")   = a  <^> b1
+a    <^> (b1 :^: V"^")   = b1 <^> a   -- note: destroys termination
+a    <^> (b1 :^: V"*")   = b1 <*> a
+a    <^> (b1 :^: V"+")   = b1 <+> a
+a    <^> (b1 :^: b2)     = a :^: (b1 <^> b2) 
+
+_ <<>>  b               = b
+-}
+
+-- {-  TEMP
 a <+> b = case a of  V "0"         -> b
                      _             -> case b of  V "0"         -> a
                                                  b1 :+: b2     -> (a <+> b1) <+> b2
                                                  _             -> a :+: b 
-a <*> b = case a of  _ :^: V "0"   -> b
+a <*> b = case a of
+                     _ :^: V "0"   -> b
                      _             -> case b of  V "0"         -> b
                                                  b1 :+: b2     -> (a <*> b1) <+> (a <*> b2)
                                                  b1 :*: b2     -> (a <*> b1) <*> b2
-                                                 _  :^: V "0"  -> a
+                                                 V "1"         -> a
+                                                 V"0" :^: V"+" -> a
+                                                 V"1" :^: V"*" -> a
+                                                 _    :^: V"0" -> a
                                                  _             -> a :*: b 
-a <^> b = case b of  V "0"         -> b :^: b 
+a <^> b = case b of  V "0"         -> b :^: b
+                     V "1"         -> a
                      b1 :+: b2     -> (a <^> b1) <*> (a <^> b2)
                      b1 :*: b2     -> (a <^> b1) <^> b2
+                     V"0" :^: V"+" -> a
+                     V"1" :^: V"*" -> a
                      _  :^: V "0"  -> a
                      b1 :^: V "^"  -> b1 <^> a   -- note: destroys termination
-                     b1 :^: V "*"  -> b1 <*> a
-                     b1 :^: V "+"  -> b1 <+> a
+                     b1 :^: V "*"  -> case b1 of { V"1" -> a ; _ :^: V"0" -> a ; _ -> b1 <*> a}
+                     b1 :^: V "+"  -> case b1 of { V"0" -> a ; _ -> b1 <+> a}
                      b1 :^: b2     -> a :^: (b1 <^> b2) 
                      _             -> a :^: b 
-_ <<>> b = b 
+_ <<>> b = b
+-- -}
 \end{code}
 
 The following (partial!) function then evaluates an arithmetic
@@ -308,13 +349,13 @@ tlr e = case e of
              (a :^: b :^: V "0")  ->  [ b :<>: a                 ]  --  drop1   -- indirection
              (a :^: b :^: V "~")  ->  [ b :~: a                  ]  -- 
              (a :^: b :^: V "&")  ->  [ b :&: a                  ]  -- 
-             (a :^: (b :&: c))    ->  [ c :^: b :^: a            ]  -- a permutation/swap
-             (a :^: (b :~: c))    ->  [ c :^: a :^: b            ]  -- another permutation/swap
-             (a :<>: b)           ->  [ b                        ]  --  drop1
-             (V "0" :^: V "+")    ->  [ c1                       ]
+             (a :^: (b :&: c))    ->  [ c :^: b :^: a            ]  -- a 2-chain 
+             (a :^: (b :~: c))    ->  [ b :^: a :^: c            ]  -- a 3 chain 
+             (_ :<>: b)           ->  [ b                        ]  --  drop1
+             (V "0" :^: V "+")    ->  [ c1                       ]  -- +/* left units 0/1
              (V "1" :^: V "*")    ->  [ c1                       ]
-             (V "~" :*: V "~")    ->  [ c1                       ]
-             (V "^" :*: V "~")    ->  [ V "&"                    ]
+             (V "~" :*: V "~")    ->  [ c1                       ]  -- missing a square root, I think
+             (V "^" :*: V "~")    ->  [ V "&"                    ]  -- apparently. Other interdependencies?
              _                    ->  [                          ]
 \end{code}
 Thought: the associativity laws can be done in place.
@@ -473,10 +514,18 @@ fvs e = nodups $ f e []
 
 To save typing, names for all single-letter variables
 \begin{code}
-( va, vb, vc, vd, ve, vf, vg, vh, vi, vj, vk, vl, vm, vn,
-  vs, vt, vu, vv, vw, vx, vy, vz) 
-  = ( V"a", V"b", V"c", V"d", V"e", V"f", V"g", V"h", V"i", V"j", V"k", V"l", V"m", V"n"
-    , V"s", V"t", V"u", V"v", V"w", V"x", V"y", V"z")
+( va, vb, vc, vd,
+  ve, vf, vg, vh,
+  vi, vj, vk, vl,
+  vm, vn, vo, vp,
+  vq, vr, vs, vt,
+  vu, vv, vw, vx, vy, vz) 
+  = ( V"a", V"b", V"c", V"d",
+      V"e", V"f", V"g", V"h",
+      V"i", V"j", V"k", V"l",
+      V"m", V"n", V"o", V"p",
+      V"q", V"r", V"s", V"t",
+      V"u", V"v", V"w", V"x", V"y", V"z")
 \end{code}
 
 We code a few useful numbers as expressions.
@@ -687,16 +736,29 @@ fd z@(x:xs@(y:_)) | x /= y = Just z
 
 \subsection{IO}
 
-We would like to run these programs.
+We might contemplate running these programs,
+as opposed to just evaluating them. 
 My suggestion is to think of the programs as
 stream processors.
+
 The program runs in a state-space consisting
-of an accumulator register, and an unconsumed stream.
-Each cycle of the program consumes
-some initial segment of the input stream, and
-performs a corresponding action on the accumulator.
-(This might be to add something to it, or multiply
-it by something.)
+of an accumulator register (containing maybe
+an expression), and an unconsumed stream of 
+letters/tokens from some alphabet/token-type. 
+
+Each execution cycle of the program consumes
+some initial segment (possibly null) of the input stream (stdin),
+by finitely often reading tokens successively from it, and
+atomically performs a corresponding action based on
+the content of the accumulator.
+(This might be to make it available on stdout.)
+
+One can imagine two variables, or IO-combinators: |Rd| and |Wr|,
+at which evaluation gets stuck (in hnf with those heads).
+In the former case, a token is consumed, and passed as an
+argument to the function that is the combinator's argument,
+for further evaluation. 
+In the latter case, the combinator's argument is appended to stdout.
 
 The stream of output produced by the program is then
 a potentially infinite history of successive accumulator contents.
@@ -1086,6 +1148,25 @@ So that |pr ^ W = (^) + (^) = W ^ C|
 
 TODO: code some expressions
 
+\subsection{Permutations}
+
+\begin{code}
+b1, b2, b3, b4, b5, b6 :: E
+b1 = vc :^: vb :^: va    -- id
+b2 = vb :^: vc :^: va    -- flip (2-chain)
+b3 = vc :^: va :^: vb    -- exp  (2-chain)
+b4 = va :^: vc :^: vb    -- bury/rotate-down (3-chain)
+b5 = vb :^: va :^: vc    -- pair/rotate-up (3-chain)
+b6 = va :^: vb :^: vc    -- flipped pair (2-chain)
+pargs3 :: E -> E
+pargs3 = (vz :^:) . (vy :^:) . (vx :^:)
+bargs3 :: E -> E
+bargs3 =  blog "a" . blog "b" . blog "c"
+see_perms = let f = eval . pargs3 . bargs3
+--                    blog "a" . blog "b" . blog "c"
+            in (f b1, f b2, f b3, f b4, f b5, f b6)
+\end{code}
+
 \subsection{Fixpoint operators}
 Among endless variations, two fixed-point combinators stand out, Curry's and Turing's.
 Both their fixed point combinators use self application.
@@ -1155,9 +1236,10 @@ operation that flips (that is, rotates) the top two entries.
 It can be encoded as follows:
 \begin{code}
 cR, cR_var     :: E
-cR          = cC :^: cC 
+cR             = cC :^: cC 
 cR_var         = (V "^") :*: (V "^") :*: (V "*") :^: (V "*")  -- a variant
 
+-- so lets give an alias for left rotation
 cL          :: E
 cL          = cPair
 
