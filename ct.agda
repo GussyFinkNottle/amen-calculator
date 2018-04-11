@@ -11,7 +11,7 @@ module _ (A : Set) where
 
   _^_ : -- exponentiation E 
         {X : Set}->{Y : X -> Set}->
-        (x : X) -> ((x : X) -> Y x) -> Y x
+        (x : X) -> ((x' : X) -> Y x') -> Y x
   (a ^ f) = f a 
 
   _~_ : -- flip/converse C
@@ -110,46 +110,57 @@ module _ (A : Set) where
          snd : B
   open _⊗_ public 
 
-  lemma :  (A : Set) -> (B : Set) -> (C : Set) ->
+  lemma :  {A : Set} -> {B : Set} -> {C : Set} ->
            (A -> C) -> (B -> C) -> ((A ⊕ B) -> C)
-  lemma A B C a2c b2c = f
+  lemma {A} {B} {C} a2c b2c = f
         where f :  (A ⊕ B) -> C
               f (inL x) = a2c x
               f (inR x) = b2c x
-  lemma'' :  (A : Set) -> (B : Set) -> (C : Set) ->
+  lemma'' :  {A : Set} -> {B : Set} -> {C : Set} ->
            (A -> C) ⊗ (B -> C) -> ((A ⊕ B) -> C)
-  lemma'' A B C a2cb2c = lemma A B C (fst a2cb2c) (snd a2cb2c)
+  lemma'' a2cb2c = lemma (fst a2cb2c) (snd a2cb2c)
 
-  lemma' :  (A : Set) -> (B : Set) -> (C : Set) ->
+  lemma'  :  (A : Set) -> (B : Set) -> (C : Set) ->
             (A ⊕ B -> C) -> (A -> C) ⊗ (B -> C)
-  lemma' A B C aub2c = < aub2c ∘ inL , aub2c ∘ inR >
+  lemma' A B C
+         aub2c = < aub2c ∘ inL , aub2c ∘ inR >
 
 
-  module _  (pp : (a : Set)->(b : Set)-> ((a -> b)-> a) -> a) where
+  module _  (pp : (a : Set) -> ((a -> A)-> a) -> a) where
   -- What do we get if we have an algebra for the Peirce monad?
-  -- A proof of excluded middle.
+  -- depending on the carrier, (which must have the form
+  -- a ⊕ (a -> A) ), we can be sure the carrier is non-empty.
+  -- So as schemas, Peirce subsumes EM. 
   
     not : Set -> Set
     not p = p -> A
-    notnot : Set -> Set
-    notnot p = not (not p)
-    
+
+    remark : (P : Set)-> (not P -> P) -> P
+    remark = pp 
+
     em dn : Set -> Set
     em P = P ⊕ (not P)
-    dn P = notnot P -> P  -- probably needs efq.
 
     thm : -- excluded middle
           (P : Set) -> em P
     thm P = let    body : not (em P) -> em P
                    body em2r = inR (em2r ∘ inL) 
-            in pp (em P) A body 
+            in pp (em P) body 
 
-    thm' : -- this is provable without anything
+    notnot : Set -> Set
+    notnot p = not (not p)
+
+    thm' : -- this is provable without pp
            (P : Set) -> notnot (em P)
     thm' P =   (λ y → snd y (fst y)) ∘ (lemma' P (not P) A) 
 
-    thm''' : (P : Set)-> (not P -> P) -> P
-    thm''' P = pp P A 
+    dn P = notnot P -> P  -- probably needs efq, let alone pp
+
+    -- however, it is OK on negative instances
+    -- doesn't need pp
+    lemmy_the_lemma : (P : Set)-> dn (not P)
+    lemmy_the_lemma P not₃p  = not₃p ∘ ret 
+
 
 {-
     thm'' : (P : Set)-> notnot P -> P  -- probably requires efq

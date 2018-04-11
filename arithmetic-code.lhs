@@ -521,7 +521,7 @@ fvs e = nodups $ f e []
 
 \appendix
 
-\section{Bureaucracy and gadgetry}
+\subsection{Bureaucracy and gadgetry}
 
 To save typing, names for all single-letter variables
 \begin{code}
@@ -891,24 +891,25 @@ grdl p q
   = Parser (\s-> [ (b,s'') | (_,s') <- prun p s, (b,s'') <- prun q s' ])
 grdr p q 
   = Parser (\s-> [ (a,s'') | (a,s') <- prun p s, (_,s'') <- prun q s' ])
-paren p 
-  = Parser (\s-> [ (a,s''') | (_,s')   <- prun (lit Lpar) s
+
+paren' p   =  grdl (lit Lpar) (grdr p (lit Rpar))
+
+paren p    =  Parser (\s-> [ (a,s''') | (_,s')   <- prun (lit Lpar) s
                             , (a,s'')  <- prun p s'
                             , (_,s''') <- prun (lit Rpar) s''])
 
+alt        :: Parser t a -> Parser t a -> Parser t a
+alt p q    =  Parser (\s-> prun p s ++ prun q s)
 
-alt :: Parser t a -> Parser t a -> Parser t a
-alt p q  = Parser (\s-> prun p s ++ prun q s)
+alts       :: [Parser t a] -> Parser t a
+alts ps    =  Parser (\s->concat [ prun p s | p <- ps ])
 
-alts :: [Parser t a] -> Parser t a
-alts ps  = Parser (\s->concat [ prun p s | p <- ps ])
+empty      :: Parser t [a]
+empty      =  Parser (\s->[([],s)]) 
 
-empty :: Parser t [a]
-empty = Parser (\s->[([],s)]) 
-
-rep, rep1 :: Parser t a -> Parser t [a]
-rep p = rep1 p `alt` empty 
-rep1 p = p `fby` rep p 
+rep, rep1  :: Parser t a -> Parser t [a]
+rep p      =  rep1 p `alt` empty 
+rep1 p     =  p `fby` rep p 
 
 repsep :: Parser t a -> Parser t b -> Parser t [a]
 repsep p sep = p `fby` rep (sep `grdl` p)
@@ -916,22 +917,28 @@ repsep p sep = p `fby` rep (sep `grdl` p)
 \end{code}
 
 \subsection{scanner}
+
+A token is given by a string (possibly empty) of non-blank characters.
+Two are the parentheses. Some of these are identifiers, that start with a
+letter, and then proceed in some nice subset of the non-blank characters.
+The rest, more or less, apart from the parentheses are deemed symbol tokens.
+
+One of the token types is |Num|. This is an unused placeholder. 
+
 \begin{code}
--- SCANNER.
--- turns a stream of characters into a stream of tokens.
+-- |tokens| turns a stream of characters into a stream of tokens.
 
--- import Data.Char
+is_alphabetic c  =  'a' <= (c :: Char) && c <= 'z' || 'A' <= c && c <= 'Z'
+is_digit      c  =  '0' <= (c :: Char) && c <= '9' 
+is_idch       c  =  c `elem` "_." || is_alphabetic c || is_digit c 
+is_space      c  =  c == ' '
+is_par        c  =  c `elem` "()"
+is_symch      c  =  not (is_par c || is_space c)
 
-is_alphabetic c = 'a' <= (c :: Char) && c <= 'z' || 'A' <= c && c <= 'Z'
-is_digit      c = '0' <= (c :: Char) && c <= '9' 
-is_idch     c = c `elem` "_." || is_alphabetic c || is_digit c 
-is_space      c = c == ' '
-is_par        c = c `elem` "()"
-is_symch      c = not (is_par c || is_space c)
-
-data Tok   =  Id String | Num Int |
+data Tok   =  Id String  | Num Int |
               Sym String | Lpar | Rpar
               deriving (Show,Eq)
+
 tokens     ::  String -> [Tok]
 tokens []  =  []
 tokens (c:cs) | isSpace c = tokens cs
@@ -952,9 +959,9 @@ tokens (c:cs)
 
 \end{code}
 
-\subsection{grammar}
+\subsection{rudimentary grammar}
 \begin{code}
--- GRAMMAR
+
 variable, constant, atomic :: Parser Tok E
 
 variable        =  Parser p where
@@ -1558,7 +1565,9 @@ In fact we have forms of definition by finite cases.
 
 \section{Benedicto benedicatur} 
 
-Once used, with |test|, to demo some evaluations.
+Examples I once used, with |test|, to demo some reduction sequences.
+Little thought has been given to this.
+
 \begin{code}
 
 demo1Add     = let d = va :+: vb
