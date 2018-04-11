@@ -747,24 +747,64 @@ as opposed to just evaluating them.
 My suggestion is to think of the programs as
 stream processors.
 
+In this situation, the program can contain
+at most one occurrence each of two special
+variables, that are treated specially by the
+execution system.  Linearity of these
+occurrences is extremely important here.
+
+
 The program runs in a state-space consisting
 of an accumulator register (containing maybe
 an expression), and an unconsumed stream of 
-letters/tokens from some alphabet/token-type. 
+items from some stream type. For simplicity,
+let us say the output also has the same type.
+Two possibilities:
+\begin{itemize}
+\item tokens, as recognised by a scanner.
+\item entire arithmetical expressions.
+\end{itemize}
 
 Each execution cycle of the program consumes
 some initial segment (possibly null) of the input stream (stdin),
-by finitely often reading tokens successively from it, and
+by finitely often reading items successively from it, and
 atomically performs a corresponding action based on
 the content of the accumulator.
 (This might be to make it available on stdout.)
 
 One can imagine two variables, or IO-combinators: |Rd| and |Wr|,
 at which evaluation gets stuck (in hnf with those heads).
-In the former case, a token is consumed, and passed as an
+In the former case, an item is consumed, and passed as an
 argument to the function that is the combinator's argument,
 for further evaluation. 
 In the latter case, the combinator's argument is appended to stdout.
+(A table needed.)
+
+The machine's state space is: |(stdin,stdout,control)|.
+\begin{center}
+\newcommand{\vvec}[1]{\ensuremath{\left(\begin{array}{l} #1 \end{array}\right)}}
+\begin{tabular}{ll}
+  %\textit{hnf}   &
+                   \textit{\underline{state}}  & \textit{\underline{state'}} \\[1ex]
+  %| disp :^: Rd | &
+                   $\vvec{ 
+                        |stdout| \\
+                        |e :&: stdin| \\
+                        |disp :^: Rd| }$ 
+                                      & $\vvec{ 
+                                           |stdout| \\
+                                           |stdin|  \\
+                                           |e :^: disp| }$ \\[2em]
+  %| (item :&: nxt) :^: Wr | &
+                   $\vvec{  | stdout | \\
+                            | stdin  | \\
+                            | (item :&: nxt) :^: Wr |
+                         }$
+                                      & $\vvec{ |stdout :&: item| \\
+                                                |stdin| \\
+                                                |nxt|}$
+\end{tabular}
+\end{center}
 
 The stream of output produced by the program is then
 a potentially infinite history of successive accumulator contents.
@@ -910,35 +950,34 @@ tokens (c:cs)
 \subsection{grammar}
 \begin{code}
 -- GRAMMAR
+variable, constant, atomic :: Parser Tok E
 
-variable :: Parser Tok E
-variable = Parser p where
-            p (Id st : ts) = [(V st,ts)]
-            p _            = []
+variable        =  Parser p where
+                       p (Id st : ts) = [(V st,ts)]
+                       p _            = []
+constant        =  Parser p where
+                     p (Sym st : ts) = [(V st,ts)]
+                     p _            = []
+atomic          =  variable `alt` constant `alt` paren expression
 
-constant :: Parser Tok E
-constant = Parser p where
-            p (Sym st : ts) = [(V st,ts)]
-            p _            = []
+additive, multiplicative, exponential, expression, discard :: Parser Tok E
+additive        =  Parser (\s-> [ (fo (:+:) x xs ,s')
+                                | ((x:xs),s') <-
+                                    prun (repsep multiplicative (lit (Sym "+"))) s ])
+multiplicative  =  Parser (\s-> [ (fo (:*:) x xs ,s')
+                                | ((x:xs),s') <-
+                                     prun (repsep exponential (lit (Sym "*"))) s ])
+exponential     =  Parser (\s-> [ (fo (:^:) x xs ,s')
+                                | ((x:xs),s') <-
+                                     prun (repsep atomic (lit (Sym "^"))) s ])
+expression      =  additive
 
-atomic         = variable `alt` constant `alt` paren expression
-additive       = Parser (\s-> [ (fo (:+:) x xs ,s')
-                              | ((x:xs),s') <-
-                                   prun (repsep multiplicative (lit (Sym "+"))) s ])
-multiplicative = Parser (\s-> [ (fo (:*:) x xs ,s')
-                              | ((x:xs),s') <-
-                                   prun (repsep exponential (lit (Sym "*"))) s ])
-exponential    = Parser (\s-> [ (fo (:^:) x xs ,s')
-                              | ((x:xs),s') <-
-                                   prun (repsep atomic (lit (Sym "^"))) s ])
-expression     = additive
-
-discard        = Parser (\s-> [ (fo (:<>:) x xs ,s')
-                              | ((x:xs),s') <-
-                                   prun (repsep atomic
-                                           ((lit (Sym "!"))
-                                            `alt` lit (Sym "<>"))) s
-                              ])
+discard         =  Parser (\s-> [ (fo (:<>:) x xs ,s')
+                               | ((x:xs),s') <-
+                                    prun (repsep atomic
+                                            ((lit (Sym "!"))
+                                             `alt` lit (Sym "<>"))) s
+                               ])
 
 \end{code}
 
