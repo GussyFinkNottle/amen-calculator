@@ -137,6 +137,9 @@ with a constant.
 \subsection{Booleans}
 
 I wanted to look at Church encoding of booleans.
+The following can all be restricted in such a way
+that |a|, |b| and |c| are the same.  This is analogous to
+the situation with Churc numerals.
 \begin{code}
 type I2 a b c = a -> b -> c
 impB  ::  I2 (I2 a b c) (I2 b d a) (I2 b d c)
@@ -145,13 +148,17 @@ andB  ::  I2 (I2 a b c) (I2 d b a) (I2 d b c)
 posB  ::  I2 a b a
 nilB  ::  I2 a b b
 impB  a b p n  =  a (b p n) p
-orB   a b p n  =  a p (b p n)  -- unifies with addition
+orB   a b p n  =  a p (b p n)  -- the same as numerical addition
 andB  a b p n  =  a (b p n) n
 posB  =  const 
-nilB  =  zero  
+nilB  =  zero
+if0   :: I2 a b c -> I2 b a c 
+ifP   :: a        -> a
+ifP   =  id 
+if0   =  flip
 \end{code}
 
-\section{Syntax-world arithmetical combinators}
+\section{Syntax for arithmetical expressions}
 
 The defining equations above generate an equivalence relation between
 (possibly open) terms in a signature with eight operators:
@@ -250,32 +257,37 @@ infixr 6  <+>
 \begin{code}
 (<+>),(<*>),(<^>),(<<>>) :: E -> E -> E
 
-a <+> b = case a of  V "0"         -> b
-                     _             -> case b of  V "0"         -> a
-                                                 b1 :+: b2     -> (a <+> b1) <+> b2
-                                                 _             -> a :+: b 
+a <+> b = case a of
+          V"0"         ->  b
+          _            ->  case b of
+                           V"0"           ->  a
+                           b1 :+: b2      ->  (a <+> b1) <+> b2
+                           _              ->  a :+: b 
 a <*> b = case a of
-                     _ :^: V "0"   -> b
-                     _             -> case b of  V "0"         -> b
-                                                 b1 :+: b2     -> (a <*> b1) <+> (a <*> b2)
-                                                 b1 :*: b2     -> (a <*> b1) <*> b2
-                                                 V "1"         -> a
-                                                 V"0" :^: V"+" -> a
-                                                 V"1" :^: V"*" -> a
-                                                 _    :^: V"0" -> a
-                                                 _             -> a :*: b 
-a <^> b = case b of  V "0"         -> b :^: b
-                     V "1"         -> a
-                     b1 :+: b2     -> (a <^> b1) <*> (a <^> b2)
-                     b1 :*: b2     -> (a <^> b1) <^> b2
-                     V"0" :^: V"+" -> a
-                     V"1" :^: V"*" -> a
-                     _  :^: V "0"  -> a
-                     b1 :^: V "^"  -> b1 <^> a   -- note: destroys termination
-                     b1 :^: V "*"  -> case b1 of { V"1" -> a ; _ :^: V"0" -> a ; _ -> b1 <*> a}
-                     b1 :^: V "+"  -> case b1 of { V"0" -> a ; _ -> b1 <+> a}
-                     b1 :^: b2     -> a :^: (b1 <^> b2) 
-                     _             -> a :^: b 
+          V"1"         ->  b
+          _ :^: V"0"   ->  b
+          _            ->  case b of
+                           V"0"           ->  b
+                           b1 :+: b2      ->  (a <*> b1) <+> (a <*> b2)
+                           b1 :*: b2      ->  (a <*> b1) <*> b2
+                           V"1"           ->  a
+                           V"0" :^: V"+"  ->  a
+                           V"1" :^: V"*"  ->  a
+                           _    :^: V"0"  ->  a
+                           _              ->  a :*: b 
+a <^> b = case b of
+          V"0"           ->  b :^: b
+          V"1"           ->  a
+          b1 :+: b2      ->  (a <^> b1) <*> (a <^> b2)
+          b1 :*: b2      ->  (a <^> b1) <^> b2
+          V"0" :^: V"+"  ->  a
+          V"1" :^: V"*"  ->  a
+          _  :^: V"0"    ->  a
+          b1 :^: V"^"    ->  b1 <^> a   -- note: destroys termination
+          b1 :^: V"*"    ->  case b1 of { V"1" -> a ; _ :^: V"0" -> a ; _ -> b1 <*> a}
+          b1 :^: V"+"    ->  case b1 of { V"0" -> a ; _ -> b1 <+> a}
+          b1 :^: b2      ->  a :^: (b1 <^> b2) 
+          _              ->  a :^: b 
 _ <<>> b = b
 
 \end{code}
@@ -1551,41 +1563,3 @@ let t = cE :*: cC ; vec h = vc :^: vb :^: va :^: h in test $ vx :^: (vec t :&: v
  test $ vx :^: ((va :^: cPair) :*: (vb :^: V"^"))
 --demonstrates that a ^ b = a ^ cPair :*: b ^ cE
 \fi
-
-{-
-\begin{code}
-{- EXPERIMENT -}
-
-V"0" <+> b            = b
-a    <+> V"0"         = a
-a    <+> (b1 :+: b2)  = (a <+> b1) <+> b2
-a    <+> b            = a :+: b
-
-(_ :^: V"0") <*> b    = b
-V"1" <*> b            = b
-a    <*> (_ :^: V"0")  = a
-a    <*> V"1"          = a
-a    <*> (b1 :*: b2)   = (a <*> b1) <*> b2
-a    <*> V"0"          = V"0"
-a    <*> (b1 :+: b2)   = (a <*> b1) <+> (a <*> b2)
-a    <*> b             = a :*: b
-
-a    <^> V"0"          = V"1" -- V"0" :^: V"0"
-a    <^> (b1 :+: b2)   = (a <^> b1) <*> (a <^> b2)
-a    <^> V"1"          = a 
-a    <^> (_ :^: V"0")  = a
-a    <^> (b1 :*: b2)   = (a <^> b1) <^> b2
-
-a    <^> (b1 :^: V"1")   = a  <^> b1
-a    <^> (b1 :^: _ :^: V"0")   = a  <^> b1
-a    <^> (b1 :^: V"^")   = b1 <^> a   -- note: destroys termination
-a    <^> (b1 :^: V"*")   = b1 <*> a
-a    <^> (b1 :^: V"+")   = b1 <+> a
-a    <^> (b1 :^: b2)     = a :^: (b1 <^> b2) 
-
-_ <<>>  b               = b
-{- expletives deleted -}
-
-{- OLDER -}
-\end{code}
--}
