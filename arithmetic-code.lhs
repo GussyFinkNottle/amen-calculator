@@ -247,12 +247,17 @@ formed with that operator.  (This doesn't allow us to trace reduction
 sequences -- we turn to that later.) The definitions correspond to the
 transitions of an arithmetical machine. 
 
+I have no idea whether the following are rational. Just my current hunch.
 \begin{code}
 infixr 9  <<>>
 infixr 8  <^> 
 infixr 7  <*>
 infixr 6  <+>
 \end{code}
+\begin{spec}
+infixr 5  <&>
+infixl 4  <~>
+\end{spec}
 
 \begin{code}
 (<+>),(<*>),(<^>),(<<>>) :: E -> E -> E
@@ -451,7 +456,7 @@ usually to be the one that interest me.
 
 \section{B{\"o}hm's \logarythm} 
 
-This code generating the \logarythm of an expression
+This code generating the \logarythm{} of an expression
 with respect to a variable name.
 
 B{\"o}hm's combinators
@@ -919,31 +924,31 @@ repsep p sep = p `fby` rep (sep `grdl` p)
 
 is_alphabetic c = 'a' <= (c :: Char) && c <= 'z' || 'A' <= c && c <= 'Z'
 is_digit      c = '0' <= (c :: Char) && c <= '9' 
-is_idchar     c = c `elem` "_." || is_alphabetic c || is_digit c 
+is_idch     c = c `elem` "_." || is_alphabetic c || is_digit c 
 is_space      c = c == ' '
 is_par        c = c `elem` "()"
 is_symch      c = not (is_par c || is_space c)
 
-data Tok = Id String | Num Int |
-           Sym String | Lpar | Rpar
-           deriving (Show,Eq)
-tokens :: String -> [Tok]
-tokens [] = []
+data Tok   =  Id String | Num Int |
+              Sym String | Lpar | Rpar
+              deriving (Show,Eq)
+tokens     ::  String -> [Tok]
+tokens []  =  []
 tokens (c:cs) | isSpace c = tokens cs
 tokens (inp@('(':cs)) 
-          = Lpar : tokens cs
+           =  Lpar : tokens cs
 tokens (inp@(')':cs)) 
-          = Rpar : tokens cs 
+           =  Rpar : tokens cs 
 tokens (c:cs) | is_alphabetic c
-          = id_t (c:) cs where
-                id_t b [] = [Id (b [])]
-                id_t b (c:cs) | is_idchar c = id_t (b . (c :)) cs
-                id_t b inp         = Id (b []): tokens inp 
+           =  id_t (c:) cs where
+                id_t b []                   =  [Id (b [])]
+                id_t b (c:cs) | is_idch c   =  id_t (b . (c :)) cs
+                id_t b inp                  =  Id (b []): tokens inp 
 tokens (c:cs) 
-          = id_t (c:) cs where
-                id_t b [] = [Sym (b [])]
-                id_t b (c:cs) | is_symch c = id_t (b . (c :)) cs
-                id_t b inp               = Sym (b []): tokens inp 
+           =  id_t (c:) cs where
+                id_t b []                   =  [Sym (b [])]
+                id_t b (c:cs) | is_symch c  =  id_t (b . (c :)) cs
+                id_t b inp                  =  Sym (b []): tokens inp 
 
 \end{code}
 
