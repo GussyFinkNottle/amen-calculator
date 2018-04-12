@@ -74,6 +74,15 @@ nine = three ^ two
 ten  = two * five
 \end{code}
 
+It is useful to have the first few numbers in a list:
+\begin{code}
+ff :: [EE (EE a)]
+ff = [ zero,one,two,three,four
+     , five,six,seven,eight,nine,ten]
+ff_demo f = [f n succ 0 | n <- ff ]     
+\end{code}
+Try |ff_demo  (\ x y z -> (z ^ (y ^ x) ^ x) ^ y ^ x) |.
+
 The type-schemes inferred for the definitions are as follows:
 \begin{code}
 (^)      :: a -> (a -> b) -> b

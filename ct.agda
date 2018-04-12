@@ -1,18 +1,45 @@
 module _ (A : Set) where
 
-  -- a few essential combinators. 
+{- 
+Exploration of 3 topics:
+1. continuation monad
+2. peirce monad
+3. classical principles, and whether they require efq
 
+The parameter is a completely generic "bottom" type A.
+So there is no efq axiom
+
+   efq : { x : Set }-> A -> x
+
+or its dependent version. 
+We wish to see how the classical principles inter-relate
+in the absence of efq.
+-}
+
+  -- a few essential combinators.
+  -- There should be one copy of this somewhere.
+
+module mycombinators where
+  infixr 3 _∘_
   _∘_ :  -- composition B
-      {X : Set} {Y : Set} {Z : Y -> Set} ->
-      ((y : Y) -> Z y) ->
-      (f : X -> Y) ->
-      (x : X) -> Z (f x)
+      {X : Set} {Y : X -> Set} {Z : (x : X)-> Y x -> Set} ->
+      (f : {x : X}-> (y : Y x) -> Z x y) ->  
+      (g : (x : X)-> Y x) ->
+           (x : X) -> Z x (g x)
   (f ∘ g) x = f (g x)
+  _∘'_ :  -- composition. More restrained type.
+      {X : Set} {Y : Set} {Z : Y -> Set} ->
+      (f : (y : Y) -> Z y) ->  
+      (g : (X -> Y)) ->
+           (x : X) -> Z (g x)
+  (f ∘' g) x = f (g x)
 
-  _^_ : -- exponentiation E 
+  infixr 4 _^_
+  _^_ [^] : -- exponentiation E 
         {X : Set}->{Y : X -> Set}->
         (x : X) -> ((x' : X) -> Y x') -> Y x
-  (a ^ f) = f a 
+  (a ^ f) = f a
+  [^]     = _^_ 
 
   _~_ : -- flip/converse C
        {X : Set}->{Y : Set}-> {Z : X -> Y -> Set}->
@@ -35,6 +62,10 @@ module _ (A : Set) where
        {X : Set}-> X -> X
   id a = a
 
+  zero : {X : Set}-> {Y : X -> Set}->  (x : X) → Y x -> Y x
+  zero _ = id 
+--   zero {X} {Y} x = id {Y x}  
+
   -- some notational madness
   
   _<- : Set -> Set -> Set
@@ -47,15 +78,16 @@ module _ (A : Set) where
 
   map :   {X : Set}-> {Y : Set} ->
           (X -> Y) -> C X -> C Y
-  map m cta k =  cta (k ∘ m) 
+  map m cta k =  cta ((_∘_ ~ m) k)
+  -- cta (k ∘ m) 
 
   ret : -- this is really the exponentiation combinator
          {X : Set}->     X -> C X
-  ret x k = k x
+  ret      = _^_ -- x k = k x
 
   join : -- this is really (_^_) ^ ((_~_) (_∘_) )
          {X : Set}->  C (C X) -> C X
-  join cc k =  cc (ret k)
+  join cc  =  cc ∘ ret
 
   bind : -- just follow the formula
          {X : Set}-> {Y : Set}->
@@ -138,7 +170,7 @@ module _ (A : Set) where
     remark : (P : Set)-> (not P -> P) -> P
     remark = pp 
 
-    em dn : Set -> Set
+    em stable : Set -> Set
     em P = P ⊕ (not P)
 
     thm : -- excluded middle
@@ -147,18 +179,23 @@ module _ (A : Set) where
                    body em2r = inR (em2r ∘ inL) 
             in pp (em P) body 
 
-    notnot : Set -> Set
-    notnot p = not (not p)
+    notnot  : Set -> Set
+    notnot p = not (not p)   -- need large composition
 
     thm' : -- this is provable without pp
            (P : Set) -> notnot (em P)
-    thm' P =   (λ y → snd y (fst y)) ∘ (lemma' P (not P) A) 
+{-    thm' P =   (λ y → snd y (fst y)) ∘ (lemma' P (not P) A)  -}
+    thm' P =   let b   : not (P ⊕ not P) → (not P ⊗ notnot P)
+                   b   = lemma' P (not P) A
+                   a   : not (not P ⊗ notnot P) 
+                   a y = snd y (fst y)
+               in a ∘ b
 
-    dn P = notnot P -> P  -- probably needs efq, let alone pp
+    stable P = notnot P -> P  -- probably needs efq, not just pp
 
     -- however, it is OK on negative instances
     -- doesn't need pp
-    lemmy_the_lemma : (P : Set)-> dn (not P)
+    lemmy_the_lemma : (P : Set)-> stable (not P)
     lemmy_the_lemma P not₃p  = not₃p ∘ ret 
 
 
