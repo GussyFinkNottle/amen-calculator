@@ -58,6 +58,8 @@ a `naught` b = b
 
 Instead of |naught|, one can use the infix operator |(<>)|, that looks
 a little like a `|0|'. It discards its left argument, and returns its right. 
+
+Here are the first few numbers
 \begin{code}
 (<>) = naught
 zero = naught
@@ -74,14 +76,20 @@ nine = three ^ two
 ten  = two * five
 \end{code}
 
-It is useful to have the first few numbers in a list:
+Here they are in a list, with a common type.
 \begin{code}
-ff :: [EE (EE a)]
+ff :: [(a -> a) -> a -> a]
 ff = [ zero,one,two,three,four
      , five,six,seven,eight,nine,ten]
-ff_demo f = [f n succ 0 | n <- ff ]     
 \end{code}
-Try |ff_demo  (\ x y z -> (z ^ (y ^ x) ^ x) ^ y ^ x) |.
+
+Luckily, we can print functions in decimal
+\begin{code}
+decimal n = n succ 0
+ff_demo f = [decimal (f n) | n <- ff ]     
+\end{code}
+Try |ff_demo  (\ n -> (n * n) + n) |.
+Note that all terms are divisible by 2.
 
 The type-schemes inferred for the definitions are as follows:
 \begin{code}
@@ -530,7 +538,7 @@ fvs e = nodups $ f e []
 
 \appendix
 
-\subsection{Bureaucracy and gadgetry}
+\section{Bureaucracy and gadgetry}
 
 To save typing, names for all single-letter variables
 \begin{code}
@@ -1579,25 +1587,24 @@ Little thought has been given to this.
 
 \begin{code}
 
-demo1Add     = let d = va :+: vb
-               in vc :^: d
-demo1Zero    = let d = V"0" in va :^: d 
-demo1Mul     = let d = va :*: vb in vc :^: d
-demo1One     = let d = V"1" in va :^: d
+demo1Add     = let  d  =  va :+: vb      in vx :^: d
+demo1Zero    = let  d  =  V"0"           in vx :^: d 
+demo1Mul     = let  d  =  va :*: vb      in vx :^: d
+demo1One     = let  d  =  V"1"           in vx :^: d
 
 -- show that the logarithm of an exponential behaves as expected
 demoExp     = let d = (va :^: cPair) :*: (vb :^: V"^")
-              in vc :^: d
+              in vx :^: d
 demoExp'    = let d = (va :*: cPair) :+: (vb :*: V"^")
-              in vd :^: vc :^: d
+              in vy :^: vx :^: d
 
 -- two equivalent codings                 
 demoAdd     = let c = (va :^: V"^") :+: (vb :^: V"^") 
                   d = cPair :*: V"*" :*: (c :^: V"^")
-              in ve :^: vd :^: vc :^: d
+              in vz :^: vy :^: vx :^: d
 demoAdd'    = let c = (va :^: V"^") :+: (vb :^: V"^")
                   d = cPair :+: (c :^: cK)
-              in ve :^: vd :^: vc :^: d
+              in vz :^: vy :^: vx :^: d
 
 demoNaught  = let d = V"0" :*: V"0" :^: V"^" in d
 \end{code}
