@@ -821,6 +821,8 @@ Its transitions are tabulated from left to right below.
                   }$
 \end{tabular}
 \end{center}
+The control state is really a cursor into an arithmetical expression.
+I just show the subexpression in focus. 
 
 The stream of output produced by the program is then
 a potentially infinite history of items successively
@@ -901,16 +903,18 @@ fby2 p q f
 
 grdl :: Parser t a -> Parser t b -> Parser t b
 grdr :: Parser t a -> Parser t b -> Parser t a
-grdl p q 
+grdl' p q 
   = Parser (\s-> [ (b,s'') | (_,s') <- prun p s, (b,s'') <- prun q s' ])
-grdr p q 
+grdl p q  = fby2 p q (\ _ -> id)
+grdr' p q 
   = Parser (\s-> [ (a,s'') | (a,s') <- prun p s, (_,s'') <- prun q s' ])
+grdr p q  = fby2 p q const
 
-paren' p   =  grdl (lit Lpar) (grdr p (lit Rpar))
+paren' p   =  Parser (\s-> [ (a,s''') | (_,s')   <- prun (lit Lpar) s
+                           , (a,s'')  <- prun p s'
+                           , (_,s''') <- prun (lit Rpar) s''])
+paren p    =  grdl (lit Lpar) (grdr p (lit Rpar))
 
-paren p    =  Parser (\s-> [ (a,s''') | (_,s')   <- prun (lit Lpar) s
-                            , (a,s'')  <- prun p s'
-                            , (_,s''') <- prun (lit Rpar) s''])
 
 alt        :: Parser t a -> Parser t a -> Parser t a
 alt p q    =  Parser (\s-> prun p s ++ prun q s)
@@ -987,15 +991,18 @@ constant        =  Parser p where
 atomic          =  variable `alt` constant `alt` paren expression
 
 additive, multiplicative, exponential, expression, discard :: Parser Tok E
-additive        =  Parser (\s-> [ (fo (:+:) x xs ,s')
-                                | ((x:xs),s') <-
-                                    prun (repsep multiplicative (lit (Sym "+"))) s ])
-multiplicative  =  Parser (\s-> [ (fo (:*:) x xs ,s')
-                                | ((x:xs),s') <-
-                                     prun (repsep exponential (lit (Sym "*"))) s ])
-exponential     =  Parser (\s-> [ (fo (:^:) x xs ,s')
-                                | ((x:xs),s') <-
-                                     prun (repsep atomic (lit (Sym "^"))) s ])
+additive        =  Parser  (  \s->
+                           [  (fo (:+:) x xs ,s')
+                           |  ((x:xs),s') <-
+                                prun (repsep multiplicative (lit (Sym "+"))) s ])
+multiplicative  =  Parser  (  \s->
+                           [  (fo (:*:) x xs ,s')
+                           |  ((x:xs),s') <-
+                                prun (repsep exponential (lit (Sym "*"))) s ])
+exponential     =  Parser  (  \s->
+                           [  (fo (:^:) x xs ,s')
+                           | ((x:xs),s') <-
+                                prun (repsep atomic (lit (Sym "^"))) s ])
 expression      =  additive
 
 discard         =  Parser (\s-> [ (fo (:<>:) x xs ,s')
@@ -1007,11 +1014,17 @@ discard         =  Parser (\s-> [ (fo (:<>:) x xs ,s')
 
 \end{code}
 
+I'm unsure which of these `fold' operators to use.
+I may have just broken the parser!
 \begin{code}
--- foldr1 ? 
-fo op fst [] = fst
-fo op fst (x:xs) = fst `op` fo op x xs 
+fo  op s   []       =  s
+fo  op s   (x:xs)  =   s `op` fo op x xs 
+fo' op s   []       =  s    -- tail recursive
+fo' op s   (x:xs)   =  fo' op (s `op` x) xs 
+\end{code}
 
+Useful to test parsing (which I havent done recently).
+\begin{code}
 -- instance Read E where
 --  readsPrec d = prun expression . tokens
 
