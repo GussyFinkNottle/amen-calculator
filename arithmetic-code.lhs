@@ -802,7 +802,8 @@ for further evaluation.
 In the latter case, the combinator's argument is appended to stdout.
 (A table needed.)
 
-The machine's state space is: |(stdin,stdout,control)|.
+The machine's state space is: |(control,stdin,stdout)|.
+Its transitions are tabulated from left to right below.
 \begin{center}
 \newcommand{\vvec}[1]{\ensuremath{\left(\begin{array}{l} #1 \end{array}\right)}}
 \begin{tabular}{ll}
@@ -810,28 +811,34 @@ The machine's state space is: |(stdin,stdout,control)|.
                    \textit{\underline{state}}  & \textit{\underline{state'}} \\[1ex]
   %| disp :^: Rd | &
                    $\vvec{ 
-                        |stdout| \\
-                        |e :&: stdin| \\
-                        |disp :^: Rd| }$ 
-                                      & $\vvec{ 
-                                           |stdout| \\
-                                           |stdin|  \\
-                                           |e :^: disp| }$ \\[2em]
+                        |disp :^: Rd| \\
+                        |item :&: stdin| \\
+                        |stdout| 
+                   }$ 
+                 & $\vvec{ 
+                      |item :^: disp| \\
+                      |stdin|  \\
+                      |stdout| 
+                  }$
+  \\[2em]
   %| (item :&: nxt) :^: Wr | &
-                   $\vvec{  | stdout | \\
-                            | stdin  | \\
-                            | (item :&: nxt) :^: Wr |
-                         }$
-                                      & $\vvec{ |stdout :&: item| \\
-                                                |stdin| \\
-                                                |nxt|}$
+                  $\vvec{
+                      | (item :&: nxt) :^: Wr | \\
+                      | stdin  | \\
+                      | stdout | 
+                  }$
+                & $\vvec{
+                      |nxt| \\
+                      |stdin| \\
+                      |stdout :&: item| 
+                  }$
 \end{tabular}
 \end{center}
 
 The stream of output produced by the program is then
-a potentially infinite history of successive accumulator contents.
-
-
+a potentially infinite history of successive items.
+The history of input consumed by the program is then
+a finite history of successive items.
 
 \iffalse
 \begin{code}
@@ -1587,26 +1594,26 @@ Little thought has been given to this.
 
 \begin{code}
 
-demo1Add     = let  d  =  va :+: vb      in vx :^: d
-demo1Zero    = let  d  =  V"0"           in vx :^: d 
-demo1Mul     = let  d  =  va :*: vb      in vx :^: d
-demo1One     = let  d  =  V"1"           in vx :^: d
+demo1Add    = let  d  =  va :+: vb      in vx :^: d
+demo1Zero   = let  d  =  V"0"           in vx :^: d 
+demo1Mul    = let  d  =  va :*: vb      in vx :^: d
+demo1One    = let  d  =  V"1"           in vx :^: d
 
 -- show that the logarithm of an exponential behaves as expected
-demoExp     = let d = (va :^: cPair) :*: (vb :^: V"^")
-              in vx :^: d
-demoExp'    = let d = (va :*: cPair) :+: (vb :*: V"^")
-              in vy :^: vx :^: d
+demoExp     = let  d = (va :^: cPair) :*: (vb :^: V"^")
+              in   vx :^: d
+demoExp'    = let  d = (va :*: cPair) :+: (vb :*: V"^")
+              in   vy :^: vx :^: d
 
 -- two equivalent codings                 
-demoAdd     = let c = (va :^: V"^") :+: (vb :^: V"^") 
-                  d = cPair :*: V"*" :*: (c :^: V"^")
-              in vz :^: vy :^: vx :^: d
-demoAdd'    = let c = (va :^: V"^") :+: (vb :^: V"^")
-                  d = cPair :+: (c :^: cK)
-              in vz :^: vy :^: vx :^: d
+demoAdd     = let  c = (va :^: V"^") :+: (vb :^: V"^")  
+                   d = cPair :*: V"*" :*: (c :^: V"^")  -- curry c
+              in   vz :^: vy :^: vx :^: d
+demoAdd'    = let  c = (va :^: V"^") :+: (vb :^: V"^")
+                   d = cPair :+: (c :^: cK)             -- curry c
+              in   vz :^: vy :^: vx :^: d
 
-demoNaught  = let d = V"0" :*: V"0" :^: V"^" in d
+demoNaught  = let  d = V"0" :*: V"0" :^: V"^" in d
 \end{code}
 %\fi
 \end{document}
