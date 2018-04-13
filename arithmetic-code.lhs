@@ -83,13 +83,6 @@ ff = [ zero,one,two,three,four
      , five,six,seven,eight,nine,ten]
 \end{code}
 
-Luckily, we can print functions in decimal
-\begin{code}
-decimal n = n succ 0
-ff_demo f = [decimal (f n) | n <- ff ]     
-\end{code}
-Try |ff_demo  (\ n -> (n * n) + n) |.
-Note that all terms are divisible by 2.
 
 The type-schemes inferred for the definitions are as follows:
 \begin{code}
@@ -580,13 +573,19 @@ cN :: Int -> E    -- allows inputting numerals in decimal.
 cN n = let x = c0 : [ t :+: c1 | t <- x ] in x !! n
 
 cN_suggestion = "test $ vz :^: vs :^: cN 7"
-
-{- Somehow allow decimal output, when possible? -}
-{- |dN :: N a -> Int   |-}
-{- |dN e = e (+1) 0 |-}
-
 \end{code}
 
+Luckily, we can print real church numerals in decimal,
+and therefore print the first few values of a
+function of type | EE (EE (EE a)) |
+\begin{code}
+base10 :: EE (EE Int) -> Int
+base10 n   = n succ 0
+
+ffv_suggestion = "let eg n = (n * n) + n in map (base10 . eg) ff "
+\end{code}
+Note that all terms are divisible by 2.
+(Division by two is a tricky matter...)
 
 \section{Displaying}
 
@@ -836,9 +835,12 @@ Its transitions are tabulated from left to right below.
 \end{center}
 
 The stream of output produced by the program is then
-a potentially infinite history of successive items.
+a potentially infinite history of items successively
+written to stdout.
+
 The history of input consumed by the program is then
-a finite history of successive items.
+a finite history of successively read stdin items.
+(Or something similar ...)
 
 \iffalse
 \begin{code}
