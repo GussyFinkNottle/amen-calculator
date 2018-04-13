@@ -535,32 +535,20 @@ fvs e = nodups $ f e []
 
 To save typing, names for all single-letter variables
 \begin{code}
-( va, vb, vc, vd,
-  ve, vf, vg, vh,
-  vi, vj, vk, vl,
-  vm, vn, vo, vp,
-  vq, vr, vs, vt,
-  vu, vv, vw, vx, vy, vz) 
-  = ( V"a", V"b", V"c", V"d",
-      V"e", V"f", V"g", V"h",
-      V"i", V"j", V"k", V"l",
-      V"m", V"n", V"o", V"p",
-      V"q", V"r", V"s", V"t",
-      V"u", V"v", V"w", V"x", V"y", V"z")
+( va, vb, vc, vd,  ve, vf, vg, vh,
+  vi, vj, vk, vl,  vm, vn, vo, vp,
+  vq, vr, vs, vt,  vu, vv, vw, vx, vy, vz) 
+  = ( V"a", V"b", V"c", V"d",      V"e", V"f", V"g", V"h",
+      V"i", V"j", V"k", V"l",      V"m", V"n", V"o", V"p",
+      V"q", V"r", V"s", V"t",      V"u", V"v", V"w", V"x", V"y", V"z")
 \end{code}
 
 We code a few useful numbers as expressions.
 \begin{code}
 c2, c3, c4 , c5, c6, c7, c8, c9, c10 :: E
-c2       = c1      :+: c1
-c3       = c2      :+: c1 
-c4       = c2      :^: c2
-c5       = c3      :+: c2
-c6       = c3      :*: c2
-c7       = c3      :+: c4
-c8       = c2      :^: c3
-c9       = c3      :^: c2
-c10      = c2      :*: c5
+(c2,c3,c4)   = (c1 :+: c1,  c2 :+: c1,  c2 :^: c2)
+(c5,c6,c7)   = (c3 :+: c2,  c3 :*: c2,  c3 :+: c4)
+(c8,c9,c10)  = (c2 :^: c3,  c3 :^: c2,  c2 :*: c5)
 \end{code}
 |c0| and |c1| have already been defined.
 
