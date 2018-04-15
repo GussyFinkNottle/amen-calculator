@@ -519,14 +519,16 @@ The following function returns a list of all the variable names occurring in an 
 The list is returned in the order in which variables first occur in a depth-first scan.
 \begin{code}
 fvs e = nodups $ f e []
-               where f (V nm) = if nm `elem` ["0", "1", "^", "*", "+", "@", ",", "~", "."]
+               where f (V nm) = if nm `elem` [ "0", "1", "^", "*", "+",
+                                               "@", ",", "~", ".", "&" ]
                                 then id else (nm:)
                      f (a :^: b)   = f a . f b 
                      f (a :*: b)   = f a . f b 
                      f (a :+: b)   = f a . f b
                      f (a :<>: b)  = f b
 \end{code}
-
+It has to be said that `$x$ occurs in $a$' is merely a sufficient, but not
+a necessary condition for $a$ to be independent of $x$. Consider | vx :^: c0 |.
 
 
 \appendix
@@ -1622,6 +1624,7 @@ demoNaught  = let  d = V"0" :*: V"0" :^: V"^" in d
 \end{document}
 
 Safe place for debris:
+Don't  use code environment!
 
 *Main> let l = V"*" :*: cB :*: (V"+" :^: V"*") ; r = V"*" :+: (V"+" :^: cK) :+: (V"*" :*: V"*") in test (vc :^: vb :^: va :^: l)
 
@@ -1638,7 +1641,12 @@ let b = vz :^: vy :^: vx ;
 
 let t = cE :*: cC ; vec h = vc :^: vb :^: va :^: h in test $ vx :^: (vec t :&: vec cPair)
 
+
+
 \iffalse
  test $ vx :^: ((va :^: cPair) :*: (vb :^: V"^"))
 --demonstrates that a ^ b = a ^ cPair :*: b ^ cE
 \fi
+
+-- demonstrates log-like behaviour of _^K.
+test $ inst_xyz $ (va :^: (cK :*: cE) :+: vb :^: (cK :*: cE)) :^: cCurry -- (va :+: vb) :^: cK
