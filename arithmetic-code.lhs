@@ -339,8 +339,8 @@ may want to observe finite segments of the sequence of reductions.
 The second piece of code is for watching the reduction
 rules in action.
 
-The machinery is controlled by a single (case-)table of top-level
-reductions, in the function |tlr| below.
+The machinery is controlled by a single (case-)table of
+contractions (ie. top-level reductions), in the function |tlr| below.
 This maps an expression to the list of expressions to which it
 can be reduced in one top-level step (rewriting the root of the expression).  
 To vary the details of reduction, one can tinker with the definition
@@ -460,7 +460,9 @@ rss = branches . reductTree
 \end{code}
 
 The first `canonical' reduction sequence in my enumeration seems
-usually to be the one that interest me. 
+top-down, or lazy in some sense.  It is usually
+quite usable (to understand what is going on in a calculation),
+at least by me.
 
 
 
@@ -674,7 +676,7 @@ nodups (x:xs) = x : nodups (filter (/= x) xs)
 
 \subsection{Some top-level commands} 
 
-The first reduction sequence. This is by far the most useful. One might type something like
+The first reduction sequence. This is usually the most useful. One might type something like
 \begin{spec}
          test $ vu :^: vz :^: vy :^: vx :^: cS
 \end{spec}
