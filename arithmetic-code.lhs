@@ -373,10 +373,12 @@ tlr e = case e of
              (a :^: (b :&: c))    ->  [ c :^: b :^: a            ]  -- a 2-chain 
              (a :^: (b :~: c))    ->  [ b :^: a :^: c            ]  -- a 3 chain 
              (_ :<>: b)           ->  [ b                        ]  --  drop1
+             (V "^" :^: V "~")    ->  [ c1                       ]  -- strong eta
              (V "0" :^: V "+")    ->  [ c1                       ]  -- +/* left units 0/1
              (V "1" :^: V "*")    ->  [ c1                       ]
              (V "~" :*: V "~")    ->  [ c1                       ]  -- missing a square root, I think
-             (V "^" :*: V "~")    ->  [ V "&"                    ]  -- apparently. Other interdependencies?
+             (V "^" :*: V "~")    ->  [ V "&"                    ]  -- apparently. 
+             (V "&" :*: V "~")    ->  [ V "^"                    ]  -- apparently. Others?
              _                    ->  [                          ]
 \end{code}
 Thought: the associativity laws can be done in place.
