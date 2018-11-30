@@ -32,18 +32,22 @@ the syntax:
 
 * binary infix operators `:+:, :*:, :^:, :<>:`,
 
-* unary constants `V"+", V"*", V"^", V"0"`, and
+* (nullary) constants `V"+", V"*", V"^", V"0"`
+  (also, perhaps, V"~", V"&" or V","),
 
 * variables `va, vb, ...`, given by alphabetical strings.
 
 In ghci one can build up expressions making use of
-let-expressions. A rudimentary parser from strings is also available.
-Something like
+let-expressions. For example:
 
+>   let t = cC :^: cC ; p h = vc :^: vb :^: va :^: h in test $ p t 
+
+A rudimentary parser from strings is also available, as well as a
+rudimentary function `blog` that takes logarithms of an expression with
+respect to a free variable. Something like
 
 >   let (e,[]):_ = prun expression (tokens "(eggs + bacon) ^ egg")
 >   in test $ vc :^: vb :^: va :^: blog "egg" e
-
 
 should either
 
@@ -54,8 +58,9 @@ should either
   and display a particular reduction sequence.
 
 Various  combinators are defined, for example the standard combinator-sets **IBCKW**
-and **SKI** (also combinatorially complete). But there are also
-combinators for pairing, currying, and 
+and **SKI** (also combinatorially complete). For example `cC` is V"~" and `cB` is cM :^: cC.
+
+There are also combinators for pairing, currying, and 
 projection, combinators related to currying, permutation of
 arguments, fixed points, the continuation monad, and lots more.
-You have to browse the the code to find these.
+I am afraid you have to browse the code to find these.
