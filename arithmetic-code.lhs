@@ -352,18 +352,31 @@ the order of pattern matching might matter.
 \begin{code}
 tlr :: E -> [E]
 tlr e = case e of
+          -- addition
              (a :+: (b :+: c))    ->  [ (a :+: b) :+: c          ]  --  space reuse
              (V "0" :+: a)        ->  [ a                        ]  --  drop1
              (a :+: V "0")        ->  [ a                        ]  --  drop1
+          -- multiplication
              (a :*: (b :+: c))    ->  [ (a :*: b) :+: (a :*: c)  ]  --  2 to 3
              (a :*: V "0")        ->  [ c0                       ]  --  drop1
              (a :*: (b :*: c))    ->  [ (a :*: b) :*: c          ]  --  reuse
-             (V "1" :*: a)        ->  [ a                        ]  --  drop1
              (a :*: V "1")        ->  [ a                        ]  --  drop1
+             (V "1" :*: a)        ->  [ a                        ]  --  drop1
+          -- random * optimisations ++
+             (V "~" :*: V "~")    ->  [ c1                       ]  -- missing a square root, I think
+             (V "^" :*: V "~")    ->  [ V "&"                    ]  -- apparently. 
+             (V "&" :*: V "~")    ->  [ V "^"                    ]  -- apparently. Others?
+          --
+          -- exponentiation
              (a :^: (b :+: c))    ->  [ (a :^: b) :*: (a :^: c)  ]  --  2 to 3
              (a :^: V "0")        ->  [ c1                       ]  --  drop1
              (a :^: (b :*: c))    ->  [ (a :^: b) :^: c          ]  --  reuse
              (a :^: V "1")        ->  [ a                        ]  --  drop1   -- idle
+          -- random ^ optimisations ++
+             (V "^" :^: V "~")    ->  [ c1                       ]  -- strong eta
+             (V "0" :^: V "+")    ->  [ c1                       ]  -- +/* left units 0/1
+             (V "1" :^: V "*")    ->  [ c1                       ]
+          -- 
              (a :^: b :^: V "+")  ->  [ b :+: a                  ]  --  drop1
              (a :^: b :^: V "*")  ->  [ b :*: a                  ]  --  drop1
              (a :^: b :^: V "^")  ->  [ b :^: a                  ]  --  drop1   -- top 2 swap
@@ -371,14 +384,11 @@ tlr e = case e of
              (a :^: b :^: V "~")  ->  [ b :~: a                  ]  -- 
              (a :^: b :^: V "&")  ->  [ b :&: a                  ]  -- 
              (a :^: (b :&: c))    ->  [ c :^: b :^: a            ]  -- a 2-chain 
-             (a :^: (b :~: c))    ->  [ b :^: a :^: c            ]  -- a 3 chain 
+             (a :^: (b :~: c))    ->  -- [ b :^: a :^: c            ]  -- a 3 chain
+                                      [ c :^: a :^: b            ]  -- above seems to be a mistake
+          -- naught
              (_ :<>: b)           ->  [ b                        ]  --  drop1
-             (V "^" :^: V "~")    ->  [ c1                       ]  -- strong eta
-             (V "0" :^: V "+")    ->  [ c1                       ]  -- +/* left units 0/1
-             (V "1" :^: V "*")    ->  [ c1                       ]
-             (V "~" :*: V "~")    ->  [ c1                       ]  -- missing a square root, I think
-             (V "^" :*: V "~")    ->  [ V "&"                    ]  -- apparently. 
-             (V "&" :*: V "~")    ->  [ V "^"                    ]  -- apparently. Others?
+          -- nothing else is reducible
              _                    ->  [                          ]
 \end{code}
 Thought: the associativity laws can be done in place.

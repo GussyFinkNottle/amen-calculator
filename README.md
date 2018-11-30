@@ -40,11 +40,11 @@ the syntax:
 In ghci one can build up expressions making use of
 let-expressions. For example:
 
->   let t = cC :^: cC ; p h = vc :^: vb :^: va :^: h in test $ p t 
+>   let t = cC :^: cC ; p3 h = vc :^: vb :^: va :^: h in test $ p3 (t :^: t :^: t)
 
 A rudimentary parser from strings is also available, as well as a
-rudimentary function `blog` that takes logarithms of an expression with
-respect to a free variable. Something like
+rudimentary function `blog` that calculates the logarithms of an expression, with
+respect to a free variable, given by a string. Something like
 
 >   let (e,[]):_ = prun expression (tokens "(eggs + bacon) ^ egg")
 >   in test $ vc :^: vb :^: va :^: blog "egg" e
