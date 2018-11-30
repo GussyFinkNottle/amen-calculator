@@ -406,6 +406,8 @@ sites e  =  (id,e) : case e of
                        (a :+: b)   ->  h (:+:) a b
                        (a :*: b)   ->  h (:*:) a b
                        (a :^: b)   ->  h (:^:) a b
+                       (a :&: b)   ->  h (:&:) a b
+                       (a :~: b)   ->  h (:~:) a b 
                        (a :<>: b)  ->  sites b          -- DANGER! indirection
                        _           ->  []               -- no internal sites
             where
@@ -470,8 +472,8 @@ at least by me.
 
 \section{B{\"o}hm's \logarythm} 
 
-This code generating the \logarythm{} of an expression
-with respect to a variable name.
+This code constructs the \logarythm{} of an expression
+with respect to a variable name. 
 
 B{\"o}hm's combinators
 \begin{code}
@@ -492,14 +494,14 @@ These have the crucial properties
 \end{spec}
 used in defining the logarithm.
 
-This code can perhaps be slightly refined to keep the size
-of its logarithms down. The cases to look at are those where
-the variable occurs in just one of a pair of operands.
+The code below can perhaps refined to keep the size
+of its logarithms down.  It is very naive.
+The interesting cases are those where
+the variable occurs in just once of a pair of operands.
 \begin{code}
 blog v e | not (v `elem` fvs e) = cBohm0 e 
 blog v e = case e of 
-          a :+: b -> {- cBohmA (blog v a) (blog v b) -}
-                     case (v `elem` fvs a,v `elem` fvs b) of
+          a :+: b -> case (v `elem` fvs a,v `elem` fvs b) of
                         (False,True)    -> (blog v b) :*: (a :^: cA)
                         (True,False)    -> (blog v a) :*: (b :^: cA :^: cC)
                         _               -> cBohmA (blog v a) (blog v b) 
@@ -526,6 +528,9 @@ fvs e = nodups $ f e []
                where f (V nm) = if nm `elem` [ "0", "1", "^", "*", "+",
                                                "@", ",", "~", ".", "&" ]
                                 then id else (nm:)
+                                -- NB: "," is just "&" (pairing).
+                                --     "." is reverse "*" (unused)
+                                --     "@" is reverse "^" (unused)
                      f (a :^: b)   = f a . f b 
                      f (a :*: b)   = f a . f b 
                      f (a :+: b)   = f a . f b
