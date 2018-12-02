@@ -351,30 +351,30 @@ there might be overlap: more than one reduction rule might apply.  In such a cas
 the order of pattern matching might matter.
 \begin{code}
 tlr :: E -> [E]
-tlr e = case e of
-          -- addition
+tlr e = case e of 
+          -- addition |+|
              (a :+: (b :+: c))    ->  [ (a :+: b) :+: c          ]  --  space reuse
              (V "0" :+: a)        ->  [ a                        ]  --  drop1
              (a :+: V "0")        ->  [ a                        ]  --  drop1
-          -- multiplication
+          -- multiplication |*|
              (a :*: (b :+: c))    ->  [ (a :*: b) :+: (a :*: c)  ]  --  2 to 3
              (a :*: V "0")        ->  [ c0                       ]  --  drop1
              (a :*: (b :*: c))    ->  [ (a :*: b) :*: c          ]  --  reuse
              (a :*: V "1")        ->  [ a                        ]  --  drop1
              (V "1" :*: a)        ->  [ a                        ]  --  drop1
-          -- random * optimisations ++
+          -- random |*| optimisations
              (V "~" :*: V "~")    ->  [ c1                       ]  -- missing a square root, I think
              (V "^" :*: V "~")    ->  [ V "&"                    ]  -- apparently. 
              (V "&" :*: V "~")    ->  [ V "^"                    ]  -- apparently. Others?
           --
-          -- exponentiation
+          -- exponentiation |^|
              (a :^: (b :+: c))    ->  [ (a :^: b) :*: (a :^: c)  ]  --  2 to 3
              (a :^: V "0")        ->  [ c1                       ]  --  drop1
              (a :^: (b :*: c))    ->  [ (a :^: b) :^: c          ]  --  reuse
              (a :^: V "1")        ->  [ a                        ]  --  drop1   -- idle
-          -- random ^ optimisations ++
+          -- random |^| optimisations 
              (V "^" :^: V "~")    ->  [ c1                       ]  -- strong eta
-             (V "0" :^: V "+")    ->  [ c1                       ]  -- +/* left units 0/1
+             (V "0" :^: V "+")    ->  [ c1                       ]  -- |0/1| left units for |+/*|
              (V "1" :^: V "*")    ->  [ c1                       ]
           -- 
              (a :^: b :^: V "+")  ->  [ b :+: a                  ]  --  drop1
@@ -384,13 +384,13 @@ tlr e = case e of
              (a :^: b :^: V "~")  ->  [ b :~: a                  ]  -- 
              (a :^: b :^: V "&")  ->  [ b :&: a                  ]  -- 
              (a :^: (b :&: c))    ->  [ c :^: b :^: a            ]  -- a 2-chain 
-             (a :^: (b :~: c))    ->  -- [ b :^: a :^: c            ]  -- a 3 chain
-                                      [ c :^: a :^: b            ]  -- above seems to be a mistake
+             (a :^: (b :~: c))    ->  [ c :^: a :^: b            ]  -- a 3-chain 
           -- naught
              (_ :<>: b)           ->  [ b                        ]  --  drop1
           -- nothing else is reducible
              _                    ->  [                          ]
 \end{code}
+
 Thought: the associativity laws can be done in place.
 The distribution laws cannot. Quite a few others can reuse the
 redex as an indirection node.
@@ -536,11 +536,11 @@ The list is returned in the order in which variables first occur in a depth-firs
 \begin{code}
 fvs e = nodups $ f e []
                where f (V nm) = if nm `elem` [ "0", "1", "^", "*", "+",
-                                               "@", ",", "~", ".", "&" ]
+                                               "$", ",", "~", ".", "&" ]
                                 then id else (nm:)
-                                -- NB: "," is just "&" (pairing).
-                                --     "." is reverse "*" (unused)
-                                --     "@" is reverse "^" (unused)
+                                -- NB: |,| is just |&| (pairing).
+                                --     |.| is reverse |*| (unused)
+                                --     |$| is reverse |^| (unused)
                      f (a :^: b)   = f a . f b 
                      f (a :*: b)   = f a . f b 
                      f (a :+: b)   = f a . f b
