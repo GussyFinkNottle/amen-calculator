@@ -13,7 +13,8 @@
   type E1 x = E x
   type E2 x = E (E x)
   type E3 x = E (E2 x)
-  type E4 x = E (E3 x)
+  type E4 x = E2 (E2 x)
+  type E5 x = E3 (E2 x)
 
   type N x  = E2 x
   pd n s z = n (\ m f _ -> f (m s z)) (const id) id z
@@ -101,7 +102,15 @@ like pd, in order that pd can be iterated using a Church numeral.
 
 -- E3 x is inhabited (additionally) by the extended polynomials
   sgbar, sg  :: E3 x            -- 1,0,0,0,...
-  -- also suc, const n, \x -> x^3 + 3x^2 + ... etc.
+  -- also suc, const n, \x -> x^3 + 3x^2 + 3x + 1 etc.
+
+-- E4 x is inhabited, for example, by
+  eg  :: E4 x
+  eg f = f . suc  -- or other polynomial
+
+-- E5 x is inhabited, for example, by
+  gpd' :: E5 x
+  gpd' n f a = gpd a f n 
 
 -- E4 x -> E2 x is inhabited by
   parity     :: E4 x -> E2 x    -- 0,1,0,1,...
@@ -128,11 +137,13 @@ will of necessity have a higher type than the value of (bs n f).
   add m n s = n s . m s
   mul m n   = n . m
   exp m n   = n m
+  {- Leave out the td's, to allow more general types 
   zero :: N a
   suc  :: E(N a)
   add  :: N a -> N a -> N a
   mul  :: E a -> E a -> E a
   exp  :: a -> E a -> a
+  -}
 
   bs n f -- s z
          = accu (n step (init0 f))

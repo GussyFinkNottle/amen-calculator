@@ -235,9 +235,14 @@ data E  = V String
 We can think of these expressions as fancy Lisp S-expressions, with four
 different binary `cons' operations, each with an distinct arithmetical flavour.
 
+As for the experiments, we can define |&| and |~| by
+\begin{spec}
+   (a  ~  b)  =  a      *  (b ^)
+   (a  &  b)  =  (a ^)  *  (b ^)
+\end{spec}
 
 It is convenient to have atomic constants identified by arbitrary strings.
-The constants |"+"|, |"*"|, |"^"|, |"0"|, |"1"| are treated specially.
+The constants |"+"|, |"*"|, |"^"|, |"0"|, |"1"| (among others) are treated specially.
 \begin{code}
 (cA, cM, cE, c0, c1, cC_new, cPair_new, c0')
   = ( V"+"        -- AMEN
@@ -251,13 +256,18 @@ The constants |"+"|, |"*"|, |"^"|, |"0"|, |"1"| are treated specially.
     )
 \end{code}
 
-For each arithmetical operator, we define a function that takes two
-arguments, and (sometimes) returns a `normal' form of the expression 
-formed with that operator.  (This doesn't allow us to trace reduction
-sequences -- we turn to that later.) The definitions correspond to the
-transitions of an arithmetical machine. 
+Now we turn to evaluation of expressions. Of course, this will be
+only a partial function, as there are expressions which one
+cannot finish evaluating. To begin with, we are not interested in
+seeing reduction sequences. (We turn to them later.)
 
-I have no idea whether the following are rational. Just my current hunch.
+For each binary arithmetical operator, we define a function that takes two
+arguments, and (sometimes) returns a `normal' form of the expression 
+formed with that operator.  Then we recurse (in |eval|) over the structure of an expression
+to define the code that might return its normal form.
+
+I'm not entirely confident the following works properly.
+It should match the |tlr| given later. 
 \begin{code}
 infixr 9  <<>>
 infixr 8  <^> 
@@ -1639,6 +1649,8 @@ demoAdd'    = let  c = (va :^: V"^") :+: (vb :^: V"^")
 
 demoNaught  = let  d = V"0" :*: V"0" :^: V"^" in d
 \end{code}
+
+You can for example ask ghci to evaluate | test $ demoAdd' |.
 %\fi
 \end{document}
 
