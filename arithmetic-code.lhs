@@ -14,7 +14,7 @@
 \newcommand{\ie}{\textit{ie.\hspace{0.5ex}}}
 \newcommand{\eg}{\textit{eg.\hspace{0.5ex}}}
 \newcommand{\etc}{\textit{\&{}co.\hspace{0.5ex}}}
-\newcommand{\logarythm}{$\lambda$ogarythm}
+\newcommand{\logarythm}{$\lambda$og$_a$rhythm}
 
 \begin{document}
 \maketitle
@@ -29,7 +29,7 @@ symbols in angle-brackets eg. |<+>|.
 module Arithmetic where 
 import Data.Char
 import Prelude hiding 
-               ((*),(^),(+),(<>)
+               ((*),(^),(+),(<>),(~),(~~), (<~>), (<~~>)
                ,(<*>),(<^>),(<+>),(<<>>)
                ,(:^:),(:*:),(:+:),(:<>:)
                ,pi
@@ -37,7 +37,9 @@ import Prelude hiding
 infixr 8  ^   
 infixr 7  *   
 infixr 6  +   
-infixr 9  <>  
+infixr 9  <>
+infix 3   &
+-- infix 3   ~  -- some weirdess about ~ as a symbol
 
 main :: IO ()        -- Do something with this later.
 main =  let eg = " test $ vc :^: vb :^: va :^: cC "
@@ -54,10 +56,36 @@ a ^ b  = b a
 a * b  = \c -> (c ^ a) ^ b
 a + b  = \c -> (c ^ a) * (c ^ b)
 a `naught` b = b
+-- some experiments
+a & b  = \c -> c a b
+a ~~ b  = \c -> a c b  -- (a ~~) is a binary function with its arguments flipped. 
 \end{code}
 
 Instead of |naught|, one can use the infix operator |(<>)|, that looks
 a little like a `|0|'. It discards its left argument, and returns its right. 
+
+
+The type-schemes inferred for the definitions are as follows:
+\begin{code}
+(^)      :: a -> (a -> b) -> b
+(*)      :: (a -> b) -> (b -> c) -> a -> c
+(+)      :: (a -> b -> c) -> (a -> c -> d) -> a -> b -> d
+(<>)     :: a -> b -> b
+one      :: a -> a
+-- a couple of experiments
+(&)      :: a -> b -> (a -> b -> c) -> c
+(~~) {- (~) -}    :: (a -> b -> c) -> b -> a -> c
+\end{code}
+Anyone should think:
+\begin{itemize}
+\item continuation transform unit
+\item action of contravariant functor |_ -> c| on morphisms
+\item lifted version of the above
+\item |const id|
+\item |id|
+\item pairing
+\item flip
+\end{itemize}
 
 Here are the first few numbers
 \begin{code}
@@ -83,23 +111,6 @@ ff = [ zero,one,two,three,four
      , five,six,seven,eight,nine,ten]
 \end{code}
 
-
-The type-schemes inferred for the definitions are as follows:
-\begin{code}
-(^)      :: a -> (a -> b) -> b
-(*)      :: (a -> b) -> (b -> c) -> a -> c
-(+)      :: (a -> b -> c) -> (a -> c -> d) -> a -> b -> d
-(<>)     :: a -> b -> b
-one      :: a -> a
-\end{code}
-Anyone should think:
-\begin{itemize}
-\item continuation transform
-\item action of contravariant functor |_ -> c| on morphisms
-\item lifted version of the above
-\item |const id|
-\item |id|
-\end{itemize}
 
 \subsection{Infinitary operations: streams and lists}
 For infinitary operations (this may come later) I need these
