@@ -125,18 +125,17 @@ pfs op ze xs = pfs' xs id
                where pfs' (x:xs) b = b ze : pfs' xs (b . (op x))
 
 
--- {-
--- pi    :: [Endo a] -> [[Endo a]]
-sigma :: Endo [a -> Endo b] 
-pi :: Endo [ Endo a ] 
-pi    = pfs (*) one
-sigma = pfs (+) zero
--- -}
 type Endo x = x -> x
 type N x = Endo (Endo x)
 index :: N [a] -> [a] -> a
 index n         = head . n tail
 -- note index 0 is head
+
+sigma :: Endo [a -> Endo b] 
+pi :: Endo [ Endo a ] 
+pi    = pfs (*) one
+sigma = pfs (+) zero
+
 
 type C x y = (x -> y) -> y
 ret :: x -> C x y
