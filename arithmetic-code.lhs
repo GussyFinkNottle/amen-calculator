@@ -7,7 +7,10 @@
 %format :+: = ":\!+\hspace{-0.5ex}:\mbox{}" 
 %format ^ = "\wedge"
 %format * = "\times"
+%format ~ = "\sim"
 %format <> = "\!\mathop{{}^{{}^{\cdot}}}\!"
+%format :~: = ":" ~ ":"
+
 
 
 \title{The AMEN calculator}
@@ -29,9 +32,9 @@ symbols in angle-brackets eg. |<+>|.
 module Arithmetic where 
 import Data.Char
 import Prelude hiding 
-               ((*),(^),(+),(<>),(~),(~~), (<~>), (<~~>)
-               ,(<*>),(<^>),(<+>),(<<>>)
-               ,(:^:),(:*:),(:+:),(:<>:)
+               ((*),(^),(+),(<>),(&),(~)
+               ,(<*>),(<^>),(<+>),(<<>>),(<&>),(<~>)
+               ,(:^:),(:*:),(:+:),(:<>:),(:&:),(:~:)
                ,pi
                )
 infixr 8  ^   
@@ -41,10 +44,10 @@ infixr 9  <>
 infix 3   &
 -- infix 3   ~  -- some weirdess about ~ as a symbol
 
-main :: IO ()        -- Do something with this later.
-main =  let eg = " test $ vc :^: vb :^: va :^: cC "
+help :: IO ()        -- Do something with this later.
+help =  let eg = " test $ vc :^: vb :^: va :^: cC " ; q = '"'
         in putStrLn
-             ("Load in ghci and type something like: " ++ eg)
+             ("Load in ghci and type something like: " ++ (q:eg) ++ [q])
 \end{code}
 
 \section{Real-world arithmetical combinators}
@@ -58,7 +61,7 @@ a + b  = \c -> (c ^ a) * (c ^ b)
 a `naught` b = b
 -- some experiments
 a & b  = \c -> c a b
-a ~~ b  = \c -> a c b  -- (a ~~) is a binary function with its arguments flipped. 
+a ~ b  = \c -> a c b  -- |(a ~)| is a binary function with its arguments flipped. 
 \end{code}
 
 Instead of |naught|, one can use the infix operator |(<>)|, that looks
@@ -74,7 +77,8 @@ The type-schemes inferred for the definitions are as follows:
 one      :: a -> a
 -- a couple of experiments
 (&)      :: a -> b -> (a -> b -> c) -> c
-(~~) {- (~) -}    :: (a -> b -> c) -> b -> a -> c
+-- Following type declaration causes a parse error...
+-- |(~)      :: (a -> b -> c) -> b -> a -> c|
 \end{code}
 Anyone should think:
 \begin{itemize}
@@ -106,27 +110,31 @@ ten  = two * five
 
 Here they are in a list, with a common type.
 \begin{code}
-ff :: [(a -> a) -> a -> a]
+ff , nos :: [(a -> a) -> a -> a]
 ff = [ zero,one,two,three,four
      , five,six,seven,eight,nine,ten]
+nos = zero: [ suc x | x <- nos]
 \end{code}
 
 
 \subsection{Infinitary operations: streams and lists}
 For infinitary operations (this may come later) I need these
 \begin{code}
-pfs :: (a -> a -> a) -> a -> [a] -> [[a]]
-pfs op ze xs = [ b ze | (b,_) <- pfs' xs id]
-               where pfs' (x:xs) b = pfs' xs (b . (op x))
+pfs :: (a -> a -> a) -> a -> [a] -> [a]
+pfs op ze xs = pfs' xs id
+               where pfs' (x:xs) b = b ze : pfs' xs (b . (op x))
 
-type EE x = x -> x
-pi    :: [EE a] -> [[EE a]]
-sigma :: [a -> EE b] -> [[a -> EE b]]
+
+-- {-
+-- pi    :: [Endo a] -> [[Endo a]]
+sigma :: Endo [a -> Endo b] 
+pi :: Endo [ Endo a ] 
 pi    = pfs (*) one
 sigma = pfs (+) zero
-
-type N x = EE (EE x)
-index        :: N [a] -> [a] -> a
+-- -}
+type Endo x = x -> x
+type N x = Endo (Endo x)
+index :: N [a] -> [a] -> a
 index n         = head . n tail
 -- note index 0 is head
 
@@ -143,10 +151,10 @@ myflip' :: N x -> x -> C x x
 myflip' = flip 
 
 -- any of the following type statements will do
-mydrop :: C (EE [a]) y 
+mydrop :: C (Endo [a]) y 
 -- | mydrop :: (([a] -> [a]) -> t) -> t  |
--- | mydrop :: (EE [a] -> t) -> t  |
--- | mydrop :: N [a] -> EE [a]  |
+-- | mydrop :: (Endo [a] -> t) -> t  |
+-- | mydrop :: N [a] -> Endo [a]  |
 mydrop n  = n tail
 mydrop'   = ($ tail)
 \end{code}
@@ -160,7 +168,7 @@ with a constant.
 I wanted to look at Church encoding of booleans.
 The following can all be restricted in such a way
 that |a|, |b| and |c| are the same.  This is analogous to
-the situation with Churc numerals.
+the situation with Church numerals.
 \begin{code}
 type I2 a b c = a -> b -> c
 impB  ::  I2 (I2 a b c) (I2 b d a) (I2 b d c)
@@ -205,7 +213,7 @@ The $\zeta$-rule is a cancellation law. It expresses
 two expressions that behave the same as exponents of a generic base
 (as it were, a cardboard-cutout of a base) are equivalent. 
 I shall call this equivalence relation $\zeta$-equality.  Any equation I assert
-should be interpreted as $\zeta$-equations, unless I say otherwise.
+should be interpreted as a $\zeta$-equation, unless I explicitly say otherwise.
 
 It may be that to determine the behaviour of an expression as an
 exponent, we have to supply it with more than one base-variable.
@@ -252,25 +260,38 @@ As for the experiments, we can define |&| and |~| by
    (a  &  b)  =  (a ^)  *  (b ^)
 \end{spec}
 
-It is convenient to have atomic constants identified by arbitrary strings.
+It is convenient to have atomic constants/combinators identified by symbolic strings.
 The constants |"+"|, |"*"|, |"^"|, |"0"|, |"1"| (among others) are treated specially.
 \begin{code}
-(cA, cM, cE, c0, c1, cC_new, cPair_new, c0')
-  = ( V"+"        -- AMEN
-    , V"*"
-    , V"^"
-    , V"0"
-    , V"1"        -- de trop combinators
-    , V"~"        -- flip
-    , V"&"        -- pairing
-    , V"<>"       -- discard left-hand argument
-    )
+( cA, cM, cE, cN)        
+  =  ( V"+", V"*", V"^", V"0")
+cI = cN :^: cN
+( c0, c1 ) = (cN, V "1")
 \end{code}
+It is convenient to have symbols for the flipped versions:
+\begin{code}
+( cAcC, cMcC, cEcC, cNcC) =
+  let f = ('~':) * V        -- this is typeset very wierdly
+  in  ( f "+", f "*", f "^" , f "0" ) 
+cB_possible      = cMcC
+cK_possible      = cNcC
+cI_possible      = cEcC
+\end{code}
+
+\iffalse
+%    ,  V"<>"             -- discard left-hand argument
+%--  cC,      cCcC,
+%--  cPair , cPaircC,
+%--    , V"~" , V "~~"   -- flip ;  rotR a b c - b c a  (store)
+%--    , V"&" , V $&~"   -- rotL. reverse exchanges 1 and 3. 
+\fi
 
 Now we turn to evaluation of expressions. Of course, this will be
 only a partial function, as there are expressions which one
-cannot finish evaluating. To begin with, we are not interested in
-seeing reduction sequences. (We turn to them later.)
+cannot be completely evaluated.
+
+To begin with, we disregard reduction sequences, and focus on
+the value returned by a terminated sequence. (We'll consider reduction sequences in a moment.)
 
 For each binary arithmetical operator, we define a function that takes two
 arguments, and (sometimes) returns a `normal' form of the expression 
@@ -286,7 +307,7 @@ infixr 7  <*>
 infixr 6  <+>
 \end{code}
 \begin{spec}
-infixr 5  <&>
+infixr 5  <&>     -- oh... I doubt |<,>| is available...
 infixl 4  <~>
 \end{spec}
 
@@ -384,6 +405,8 @@ tlr e = case e of
              (a :*: V "1")        ->  [ a                        ]  --  drop1
              (V "1" :*: a)        ->  [ a                        ]  --  drop1
           -- random |*| optimisations
+             (V "*" :*: (V "^" :^: V "*"))  -> [ V "~" ]  -- EXPERIMENT!!
+             ((a :*: V "*") :*: (V "^" :^: V "*"))  -> [ a :*: V "~" ]  -- EXPERIMENT!! re reassociate
              (V "~" :*: V "~")    ->  [ c1                       ]  -- missing a square root, I think
              (V "^" :*: V "~")    ->  [ V "&"                    ]  -- apparently. 
              (V "&" :*: V "~")    ->  [ V "^"                    ]  -- apparently. Others?
@@ -404,6 +427,14 @@ tlr e = case e of
              (a :^: b :^: V "0")  ->  [ b :<>: a                 ]  --  drop1   -- indirection
              (a :^: b :^: V "~")  ->  [ b :~: a                  ]  -- 
              (a :^: b :^: V "&")  ->  [ b :&: a                  ]  -- 
+
+             (a :^: b :^: V "~+")  ->  [ a :+: b                  ]  --  drop1
+             (a :^: b :^: V "~*")  ->  [ a :*: b                  ]  --  drop1
+             (a :^: b :^: V "~^")  ->  [ a :^: b                  ]  --  drop1   -- top 2 swap
+             (a :^: b :^: V "~0")  ->  [ a :<>: b                 ]  --  drop1   -- indirection
+             (a :^: b :^: V "~~")  ->  [ a :~: b                  ]  -- 
+             (a :^: b :^: V "~&")  ->  [ a :&: b                  ]  -- 
+
              (a :^: (b :&: c))    ->  [ c :^: b :^: a            ]  -- a 2-chain 
              (a :^: (b :~: c))    ->  [ c :^: a :^: b            ]  -- a 3-chain 
           -- naught
@@ -425,7 +456,7 @@ function is linear in the sense that it uses its argument exactly
 once.) Intuitively you `plug' the subexpression |e| into the `context'
 |f| to get back |e'|.
 
-The function |sites| returns (in top down preorder: root, left, right \ldots) 
+The function |sites| returns (in top down preorder: root, right, left \ldots) 
 all the subexpressions of a given expression, together with the 
 one-hole contexts in which they occur.  This includes the improper case of
 the expression itself in the empty context. I represent the one-hole contexts
@@ -442,13 +473,13 @@ sites e  =  (id,e) : case e of
                        (a :<>: b)  ->  sites b          -- DANGER! indirection
                        _           ->  []               -- no internal sites
             where
-              h op a b   =  i ++ ii
-                            where
-                              i   =  [ ((a `op`) . f,p) | (f,p) <- sites b ]  -- right operand b first
-                              ii  =  [ ((`op` b) . f,p) | (f,p) <- sites a ]
+              h o a b   =  i ++ ii
+                           where
+                              i   =  [ ((a `o`) . f,p) | (f,p) <- sites b ]  -- right operand b first
+                              ii  =  [ ((`o` b) . f,p) | (f,p) <- sites a ]
 \end{code}
-It should be noted that `far-right' sites come first. This is just a mirror image of the
-normal situation, where the far-left argument comes first.
+It should be noted that `far-right' sites are prioritised. This mirrors the 
+normal situation, where the `far-left' comes first.
 
 Now we define for any expression a list of the expressions to which it
 reduces in a single, possibly internal step, at exactly one site 
@@ -508,13 +539,15 @@ with respect to a variable name.
 
 B{\"o}hm's combinators
 \begin{code}
-cBohmA a b = let g = a :^: V"^" :+: b :^: V"^" in 
+cBohmA a b = let g = a :^: cE :+: b :^: cE in 
              let curry  g = cPair :+: g :^: cK in   -- Bohm's original
              let curry' g = cPair :*: cM :*: (g :^: cE)  -- another without additive apparatus 
-             in curry' (a :^: V"^" :+: b :^: V"^")
-cBohmE a b = a :*: cPair :+: b :*: V"^"
+             in curry' (a :^: cE :+: b :^: cE)
+cBohmE a b = a :*: cPair :+: b :*: cE
 cBohmM a b = a :+: b              
-cBohm0 a   = c0 :*: (a :^: cE)
+cBohm0 a   = c0 :*: (a :^: cE)     -- c0 :~: a
+cBohmC a b = a :+: b :^: cE
+cBohmP a b = a :^: cE :*: b :^: cE
 \end{code}
 These have the crucial properties
 \begin{spec}
@@ -529,6 +562,22 @@ The code below can perhaps refined to keep the size
 of its logarithms down.  It is very naive.
 The interesting cases are those where
 the variable occurs in just once of a pair of operands.
+
+
+I am about to change this, so I'll try to clarify my thoughts.
+I intend to treat \emph{linear} logarithms explicitly as a special case.
+With linear logarithms, when searching for the single
+occurrence of the variable, we accumulate a list of functions $[f_1, \dots f_n]$,
+the composition of which (in one direction or another) is a function that sends an given expression
+to the top-level expression with the variable occurrence replaced by an occurrence of the given expression.
+The logarithm in this case is a certain product.
+The functions are left or right sections of a binary operator:
+| (a `o`)| or |(`o` a)| -- which can be written | (`~o` a)|,
+if |`~o`| is the flipped version of |`o`|.
+Now we form the linear log as the product
+\[
+  f_1^{o_1} \times \ldots \times f_n^{o_n}
+\]
 \begin{code}
 blog v e | not (v `elem` fvs e) = cBohm0 e 
 blog v e = case e of 
@@ -548,12 +597,13 @@ blog v e = case e of
                                          V v  -> b
                                          _    -> blog v a :*: b
                         _            -> cBohmE (blog v a) (blog v b)
-
+          a :~: b -> cBohmC (blog v a) (blog v b)
+          a :&: b -> cBohmP (blog v a) (blog v b)
           V nm     -> if nm == v then c1 else cBohm0 e
 \end{code}
 
 The following function returns a list of all the variable names occurring in an expression.
-The list is returned in the order in which variables first occur in a depth-first scan.
+The list is returned in the order in which variables are encountered in a depth-first scan.
 \begin{code}
 fvs e = nodups $ f e []
                where f (V nm) = if nm `elem` [ "0", "1", "^", "*", "+",
@@ -565,7 +615,9 @@ fvs e = nodups $ f e []
                      f (a :^: b)   = f a . f b 
                      f (a :*: b)   = f a . f b 
                      f (a :+: b)   = f a . f b
-                     f (a :<>: b)  = f b
+                     f (a :<>: b)  = f b  -- we regard position a as junk
+                     f (a :~: b)   = f a . f b
+                     f (a :&: b)   = f a . f b
 \end{code}
 It has to be said that `$x$ occurs in $a$' is merely a sufficient, but not
 a necessary condition for $a$ to be independent of $x$. Consider | vx :^: c0 |.
@@ -599,17 +651,17 @@ It is time we had an combinator for successor ($(+) \times 1^{(\wedge)}$, by the
 cSuc :: E
 cSuc = blog "x" (vx :+: c1)
 
-cN :: Int -> E    -- allows inputting numerals in decimal.
-cN n = let x = c0 : [ t :+: c1 | t <- x ] in x !! n
+chN :: Int -> E    -- allows inputting numerals in decimal.
+chN n = let x = c0 : [ t :+: c1 | t <- x ] in x !! n
 
-cN_suggestion = "test $ vz :^: vs :^: cN 7"
+chN_suggestion = "test $ vz :^: vs :^: cN 7"
 \end{code}
 
 Luckily, we can print real church numerals in decimal,
 and therefore print the first few values of a
-function of type | EE (EE (EE a)) |
+function of type | Endo (Endo (Endo a)) |
 \begin{code}
-base10 :: EE (EE Int) -> Int
+base10 :: Endo (Endo Int) -> Int
 base10 n   = n succ 0
 
 ffv_suggestion = "let eg n = (n * n) + n in map (base10 . eg) ff "
@@ -659,7 +711,7 @@ showE (V str) _ = (str++)
 showE (a :+: b) p = opp p 0 (showE a 0 . (" + "++) . showE b 0)
 showE (a :*: b) p = opp p 2 (showE a 2 . (" * "++) . showE b 2)
 showE (a :^: b) p = opp p 4 (showE a 5 . (" ^ "++) . showE b 4)
--- because the below are wierd operator, I make them noisy.
+-- because the below are wierd operators, I write them noisily.
 showE (a :<>: b) p = opp p 4 (showE a 5 . (" <!> "++) . showE b 4)
 showE (a :~: b) p = opp p 4 (showE a 5 . (" <~> "++) . showE b 4)
 showE (a :&: b) p = opp p 4 (showE a 5 . (" <&> "++) . showE b 4)
@@ -709,7 +761,10 @@ first encountered is preserved in the output.
 \begin{code}
 nodups :: Eq a => [a] -> [a] 
 nodups [] = []
-nodups (x:xs) = x : nodups (filter (/= x) xs)
+nodups (x:xs) = x : let xs' = nodups xs in
+                    if   x `elem` xs'
+                    then filter (/= x) xs'
+                    else xs' 
 \end{code}
 
 \subsection{Some top-level commands} 
@@ -1065,7 +1120,7 @@ fo' op s   []       =  s    -- tail recursive
 fo' op s   (x:xs)   =  fo' op (s `op` x) xs 
 \end{code}
 
-Useful to test parsing (which I havent done recently).
+Useful to test parsing (which I haven't done recently).
 \begin{code}
 -- instance Read E where
 --  readsPrec d = prun expression . tokens
@@ -1086,12 +1141,12 @@ The combinators |C|, |B|, |K|, |I| and |W| can be encoded
 as follows in our calculus.
 \begin{code}
 cC, cB, cK, cI, cI', cW, c0 :: E
-cC    = V"*" :*: V"^" :^: V"*"             -- M to one plus E to the E 
-cB    = V"^" :*: V"*" :^: V"*"             -- M to the C
-cK    = V"^" :*: V"0" :^: V"*"             -- 0 to the C
-cI    = V"@" :^: V"0"
-cI'   = V"^" :*: V"^" :^: V"*"             -- E to the C
-cW    = V"^" :*: (V"^" :+: V"^") :^: V"*"  -- twice E to the cC
+cC    = V"*" :*: cE :^: V"*"             -- M to one plus E to the E 
+cB    = cE :*: V"*" :^: V"*"             -- M to the C
+cK    = cE :*: V"0" :^: V"*"             -- 0 to the C
+-- | cI    = V"@" :^: V"0" |
+cI'   = cE :*: cE :^: V"*"             -- E to the C
+cW    = cE :*: (cE :+: cE) :^: V"*"  -- twice E to the cC
 \end{code}
 
 The `real word' versions:
@@ -1176,7 +1231,7 @@ pair x     = (^) * ((x^)*)
 pair       = (^)*(*)*((^)*)
 \end{spec}
 \begin{code}
-cPair = V"^" :*: V"*" :*: (V"^" :^: V"*")
+cPair = cE :*: cM :*: (cE :^: cM)
 \end{code}
 
 Closely related to pairing is the Curry combinator,
@@ -1507,13 +1562,13 @@ One can ask the same questions with respect to the Peirce monad.
 The monadic apparatus can be encoded as follows
 \begin{code}
 ct         ::  E -> E
-ct a       =   a :^: V "^"                     -- unit
+ct a       =   a :^: cE                     -- unit
 cb         ::  E -> E -> E
-cb m f     =   V "^" :*: (f :^: V "*") :*: m  -- bind
+cb m f     =   cE :*: (f :^: cE) :*: m  -- bind
 
 cCTret, cCTjoin, cCTbind ::  E
-cCTret     =   V"^"
-cCTjoin    =   cCTret :^: V"*"
+cCTret     =   cE
+cCTjoin    =   cCTret :^: cM
 cCTbind    =   blog "m" (blog "f" (cb (V"m") (V"f")))
 \end{code}
 It may be interesting to point out that
@@ -1585,7 +1640,7 @@ takes |n| to |(n^)|) plays the role of the singleton operation  $n \mapsto \{n\}
 
 \begin{code}
 cOsuc :: E -> E
-cOsuc e = e :+: (e :^: V"^")
+cOsuc e = e :+: (e :^: cE)
 
 cOzero :: E
 cOzero = V"0"
@@ -1602,7 +1657,7 @@ function of the zero numbers.
 \begin{code}
 sgbar = ((<>) ^)
 cSgbar = c0 :^: cE
-sgbar' :: EE (N a)
+sgbar' :: Endo (N a)
 sgbar' n s z = n (const z) (s z)
 cSgbar' = let v1 = vz :^: vs
               ef = vz :^: cK
@@ -1614,7 +1669,7 @@ at 0, and 1 elsewhere (the sign function, or the characteristic
 function of the non-zero numbers).
 \begin{code}
 sg = sgbar * sgbar
-sg' :: EE (N a)
+sg' :: Endo (N a)
 sg' n s z   = n (const (s z)) z 
 cSg  = cSgbar :*: cSgbar
 cSg' = let v1 = vz :^: vs
@@ -1645,20 +1700,38 @@ demo1Mul    = let  d  =  va :*: vb      in vx :^: d
 demo1One    = let  d  =  V"1"           in vx :^: d
 
 -- show that the logarithm of an exponential behaves as expected
-demoExp     = let  d = (va :^: cPair) :*: (vb :^: V"^")
+demoExp     = let  d = (va :^: cPair) :*: (vb :^: cE)
               in   vx :^: d
-demoExp'    = let  d = (va :*: cPair) :+: (vb :*: V"^")
+demoExp'    = let  d = (va :*: cPair) :+: (vb :*: cE)
               in   vy :^: vx :^: d
 
 -- two equivalent codings                 
-demoAdd     = let  c = (va :^: V"^") :+: (vb :^: V"^")  
-                   d = cPair :*: V"*" :*: (c :^: V"^")  -- curry c
+demoAdd     = let  c = (va :^: cE) :+: (vb :^: cE)  
+                   d = cPair :*: V"*" :*: (c :^: cE)  -- curry c
               in   vz :^: vy :^: vx :^: d
-demoAdd'    = let  c = (va :^: V"^") :+: (vb :^: V"^")
+demoAdd'    = let  c = (va :^: cE) :+: (vb :^: cE)
                    d = cPair :+: (c :^: cK)             -- curry c
               in   vz :^: vy :^: vx :^: d
 
-demoNaught  = let  d = V"0" :*: V"0" :^: V"^" in d
+demoNaught  = let  d = V"0" :*: V"0" :^: cE in d
+\end{code}
+
+One can think of addition as repetition of the successor operation,
+as mutiplication as repetition of addition to zero,
+and of exponentiation as repetition of mutiplication to one.
+The successor operation can be defined as |(1 +)| or |(+ 1)|.
+
+\begin{code}
+demoSuc      = c1 :^: cA
+demoSuc'     = c1 :^: cA :^: cC
+
+demoPlus     = demoSuc :^: cPair
+demoTimes    = demoPlus :*: (c0 :^: cPair :^: cC)
+demoPower    = demoTimes :*: (c1 :^: cPair :^: cC)
+
+demoPlus'     = demoSuc' :^: cPair
+demoTimes'    = demoPlus' :*: (c0 :^: cPair :^: cC)
+demoPower'    = demoTimes' :*: (c1 :^: cPair :^: cC)
 \end{code}
 
 You can for example ask ghci to evaluate | test $ demoAdd' |.
@@ -1686,9 +1759,18 @@ let t = cE :*: cC ; vec h = vc :^: vb :^: va :^: h in test $ vx :^: (vec t :&: v
 
 
 \iffalse
- test $ vx :^: ((va :^: cPair) :*: (vb :^: V"^"))
+ test $ vx :^: ((va :^: cPair) :*: (vb :^: cE))
 --demonstrates that a ^ b = a ^ cPair :*: b ^ cE
 \fi
 
 -- demonstrates log-like behaviour of _^K.
 test $ inst_xyz $ (va :^: (cK :*: cE) :+: vb :^: (cK :*: cE)) :^: cCurry -- (va :+: vb) :^: cK
+
+-- demonstrates (+ b) as iteration of (+1).
+let suc = c1 :^: cA :^: cC ; plus b = (suc :^: cPair) :*: (b :^: cE) in test $ vy :^: vx :^: plus c3
+
+-- a definition of addition as iterated successor
+let  suc = c1 :^: cA :^: cC ; t = (cE :*: (suc :^: cPair) :^: cM) :^: cC in test $ c3 :^: c0 :^: t
+
+-- t is a redefinition of the addition combinator
+let  suc = c1 :^: cA :^: cC ; t = (cE :*: (suc :^: cPair) :^: cM) :^: cC in test $  vy :^: vx :^: (cA :*: (c1 :^: cE))  -- [+]*(1^) 
