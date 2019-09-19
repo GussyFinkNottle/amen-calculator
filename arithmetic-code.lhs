@@ -118,7 +118,12 @@ nos = zero: [ suc x | x <- nos]
 
 
 \subsection{Infinitary operations: streams and lists}
-For infinitary operations (this may come later) I need these
+For infinitary operations (this may come later) I might need
+a few things.
+
+The first folds a binary operation (such as addition)
+over the finite prefixes of a stream. So |(x1,x2,x3, ... )|
+is sent to |(0, x1, x1 + x2, x1 + x2 + x3, ... )|.
 \begin{code}
 pfs :: (a -> a -> a) -> a -> [a] -> [a]
 pfs op ze xs = pfs' xs id
@@ -136,6 +141,10 @@ pi :: Endo [ Endo a ]
 pi    = pfs (*) one
 sigma = pfs (+) zero
 
+\end{code}
+
+Stuff related to continuations.
+\begin{code}
 
 type C x y = (x -> y) -> y
 ret :: x -> C x y
@@ -188,20 +197,25 @@ if0   =  flip
 
 \section{Syntax for arithmetical expressions}
 
-The defining equations above generate an equivalence relation between
-(possibly open) terms in a signature with eight operators:
 
+Arithmetical expressions are constructed using a signature with 4 binary operators,
+and 4 constants. 
 \begin{itemize}
 \item 4 constants |(^)|, |(*)|, |(+)| and |(<>)|
 \item 4 binary operators |_^_|, |_*_|, |_+_| and |_<>_|
 \end{itemize}
 
-This is the least equivalence relation
+There is also an unlimited supply of fresh variables, named by strings (usually singleton characters).
+An expression in which a variable occurs is said to be open, otherwise closed.
+
+The defining equations for the arithmetical combinators generate two equivalence relations between
+expressions. The first is `intensional': this is the least equivalence relation
 extending the definitions, congruent to all operators in the signature.  
 This means that equations between open terms can be proved by
 substituting equals for equals.
 
-One can also allow instances of the following ``$\zeta$-rule'' in proving equations.
+The second equivalence relation identifies more expressions.
+One can also allow instances of the so-called `$\zeta$-rule' in proving equations.
 \begin{center}
     \begin{tabular}{c} |x ^ a = x ^ b|  $\mbox{}\Longrightarrow\mbox{}$ |a = b| \end{tabular}
 \end{center}
