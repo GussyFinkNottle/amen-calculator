@@ -66,8 +66,12 @@ module mycombinators where
   zero _ = id 
 --   zero {X} {Y} x = id {Y x}  
 
+module _ (A : Set) where
+  open mycombinators
+
   -- some notational madness
-  
+
+
   _<- : Set -> Set -> Set
   _<- X Y = Y -> X
 
@@ -171,9 +175,10 @@ module mycombinators where
     remark = pp 
 
     em stable : Set -> Set
-    em P = P ⊕ (not P)
+    em P      = P ⊕ (not P)
+    stable P  = notnot P -> P  -- probably needs efq, not just pp
 
-    thm : -- excluded middle
+    thm : -- excluded middle. Uses pp = Pierce
           (P : Set) -> em P
     thm P = let    body : not (em P) -> em P
                    body em2r = inR (em2r ∘ inL) 
@@ -191,7 +196,6 @@ module mycombinators where
                    a y = snd y (fst y)
                in a ∘ b
 
-    stable P = notnot P -> P  -- probably needs efq, not just pp
 
     -- however, it is OK on negative instances
     -- doesn't need pp

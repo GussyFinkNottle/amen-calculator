@@ -214,7 +214,7 @@ extending the definitions, congruent to all operators in the signature.
 This means that equations between open terms can be proved by
 substituting equals for equals.
 
-The second equivalence relation identifies more expressions.
+The second (more useful) equivalence relation identifies more expressions.
 One can also allow instances of the so-called `$\zeta$-rule' in proving equations.
 \begin{center}
     \begin{tabular}{c} |x ^ a = x ^ b|  $\mbox{}\Longrightarrow\mbox{}$ |a = b| \end{tabular}
@@ -225,13 +225,13 @@ The $\zeta$-rule is a cancellation law. It expresses
 `exponentiality':
 two expressions that behave the same as exponents of a generic base
 (as it were, a cardboard-cutout of a base) are equivalent. 
-I shall call this equivalence relation $\zeta$-equality.  Any equation I assert
+I call this equivalence relation $\zeta$-equality.  Any equation herein 
 should be interpreted as a $\zeta$-equation, unless I explicitly say otherwise.
 
 It may be that to determine the behaviour of an expression as an
 exponent, we have to supply it with more than one base-variable.
 Sometimes, `extra' variables play a role in allowing computations
-to proceed, and subsequently can be cancelled.
+to proceed, though subsequently these `extras' can be cancelled.
   
 \section{Evaluating arithmetical expressions}
 
@@ -491,8 +491,31 @@ sites e  =  (id,e) : case e of
                               i   =  [ ((a `o`) . f,p) | (f,p) <- sites b ]  -- right operand b first
                               ii  =  [ ((`o` b) . f,p) | (f,p) <- sites a ]
 \end{code}
+A variant. | sites e = [ (composelist fs,p) | (fs,p) <- sites' e ] |
+\begin{code}
+-- sites' :: E -> [([E->E],E)]
+sites' e  =  ([],e) : case e of
+                       (a :+: b)   ->  h cA a b
+                       (a :*: b)   ->  h cM a b
+                       (a :^: b)   ->  h cE a b
+                       (a :&: b)   ->  h cPair a b
+                       (a :~: b)   ->  h cC a b 
+                       (a :<>: b)  ->  sites' b          -- DANGER! indirection
+                       _           ->  []                -- no internal sites
+            where
+              h o a b   =  i ++ ii
+                           where
+                              i   =  [ ((a :^: o) : f,p) | (f,p) <- sites' b ]  -- right operand b first
+                              ii  =  [ ((b :^: o :^: cC) : f,p) | (f,p) <- sites' a ]
+\end{code}
 It should be noted that `far-right' sites are prioritised. This mirrors the 
-normal situation, where the `far-left' comes first.
+normal situation, where the left comes first.
+
+A criticism of the above code is that it might be more useful to
+keep a \emph{list} of off-path expressions (rather than the
+composite of functions like |(o a)| and |(flip o a)|). In
+a linear logarithm, we want to replace composition with
+multiplication.
 
 Now we define for any expression a list of the expressions to which it
 reduces in a single, possibly internal step, at exactly one site 
@@ -593,7 +616,16 @@ Now we form the linear log as the product
 \]
 \begin{code}
 blog v e | not (v `elem` fvs e) = cBohm0 e 
-blog v e = case e of 
+blog v e =
+{-
+     let 
+         x =  [(f,t) | (f,t) <- sites e, t == V v ]
+     in case x of
+           [(f,t)] -> -- single occurrence
+           []      -> -- does not occur
+           _       -> -- multiple occurrences
+-}         
+     case e of 
           a :+: b -> case (v `elem` fvs a,v `elem` fvs b) of
                         (False,True)    -> (blog v b) :*: (a :^: cA)
                         (True,False)    -> (blog v a) :*: (b :^: cA :^: cC)
@@ -749,7 +781,7 @@ instance Show a => Show (NList a) where
       where showline (n,e) = shows n . showString ": " . shows e 
 \end{code}
 
-\subsubsection{General list and stream stuff}
+\subsubsection{General list and stream amenities}
 Code to pair each entry in a list/stream with its position.
 \begin{code}
 enum :: [a] -> [(Int,a)]
@@ -991,10 +1023,14 @@ I hide that, I hide monads, and can't use do notation.
 -- t is the token type, v the parsed value. 
 newtype Parser t v =  Parser {prun :: [t] -> [(v,[t])]}
 
+eta :: v -> Parser t v
+eta v = Parser (\ts -> [(v,ts)])
+mmul :: Parser t (Parser t v) -> Parser t v
+mmul pp = Parser (\ts -> [(v,ts'') | (p,ts') <- prun pp ts, (v,ts'') <- prun p ts'] ) 
 
 sat :: (t -> Bool) -> Parser t t
-sat p  = Parser f where f (t:ts)  =   if p t then [(t,ts)] else []
-                        f []      =   []
+sat p  = Parser f where f (t:ts) | p t  =   [(t,ts)] --   if p t then [(t,ts)] else []
+                        f _             =   []
 
 lit :: Eq t => t -> Parser t t
 lit t  = sat (== t)
@@ -1787,3 +1823,9 @@ let  suc = c1 :^: cA :^: cC ; t = (cE :*: (suc :^: cPair) :^: cM) :^: cC in test
 
 -- t is a redefinition of the addition combinator
 let  suc = c1 :^: cA :^: cC ; t = (cE :*: (suc :^: cPair) :^: cM) :^: cC in test $  vy :^: vx :^: (cA :*: (c1 :^: cE))  -- [+]*(1^) 
+
+
+
+let m = (cSuc :^: cE) :*: (c0 :^: cPair :^: cC) ; e = (m :^: cC) :*: (c1 :^: cPair :^: cC) in test $ vz :^: vs :^: c3 :^: c2 :^: e
+
+let a = cSuc :^: cE ; m = (cSuc :^: cE) :*: (c0 :^: cPair :^: cC) ; e = (m :^: cC) :*: (c1 :^: cPair :^: cC) in test $ vs :^: c3 :^: c2 :^: e

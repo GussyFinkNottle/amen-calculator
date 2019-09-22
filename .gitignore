@@ -9,4 +9,7 @@
 *\.out
 *\.agdai
 .ghci_history\.*
+junk*
+html*
+\.DS_Store
 
