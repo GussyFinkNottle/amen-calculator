@@ -8,7 +8,7 @@
 *\.toc
 *\.out
 *\.agdai
-.ghci_history\.*
+.ghci_history*
 junk*
 html*
 \.DS_Store

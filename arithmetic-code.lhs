@@ -250,6 +250,8 @@ infixr 9  :<>:
 infixr 8  :^: 
 infixr 7  :*:
 infixr 6  :+:
+infixr 5  :&:
+infixr 5  :~: 
 \end{code}
 
 \begin{code}
@@ -486,12 +488,12 @@ sites e  =  (id,e) : case e of
                        (a :<>: b)  ->  sites b          -- DANGER! indirection
                        _           ->  []               -- no internal sites
             where
-              h o a b   =  i ++ ii
-                           where
+              h o a b   =  i ++ ii where
                               i   =  [ ((a `o`) . f,p) | (f,p) <- sites b ]  -- right operand b first
                               ii  =  [ ((`o` b) . f,p) | (f,p) <- sites a ]
 \end{code}
-A variant. | sites e = [ (composelist fs,p) | (fs,p) <- sites' e ] |
+A variant. %| sites e = [ (composelist fs,p) | (fs,p) <- sites' e ] |
+
 \begin{code}
 -- sites' :: E -> [([E->E],E)]
 sites' e  =  ([],e) : case e of
@@ -507,6 +509,11 @@ sites' e  =  ([],e) : case e of
                            where
                               i   =  [ ((a :^: o) : f,p) | (f,p) <- sites' b ]  -- right operand b first
                               ii  =  [ ((b :^: o :^: cC) : f,p) | (f,p) <- sites' a ]
+\end{code}
+
+Quick hack towards linear logs.
+\begin{code}
+lblog vn e = head [foldr (:*:) c1 (reverse fs) | (fs,p) <- sites' e, p == V vn] 
 \end{code}
 It should be noted that `far-right' sites are prioritised. This mirrors the 
 normal situation, where the left comes first.
@@ -580,10 +587,11 @@ cBohmA a b = let g = a :^: cE :+: b :^: cE in
              let curry' g = cPair :*: cM :*: (g :^: cE)  -- another without additive apparatus 
              in curry' (a :^: cE :+: b :^: cE)
 cBohmE a b = a :*: cPair :+: b :*: cE
-cBohmM a b = a :+: b              
-cBohm0 a   = c0 :*: (a :^: cE)     -- c0 :~: a
-cBohmC a b = a :+: b :^: cE
-cBohmP a b = a :^: cE :*: b :^: cE
+cBohmM a b = a :+: b
+cBohm0 a   = c0 :~: a
+cBohm0' a  = c0 :*: (a :^: cE)
+cBohmC a b = a :+: b :*: cC          -- REALLY
+cBohmP a b = a :*: cE :+: b :*: cE   -- REALLY??
 \end{code}
 These have the crucial properties
 \begin{spec}
@@ -591,6 +599,8 @@ These have the crucial properties
    x ^ cBohmM a b  = (x ^ a) * (x ^ b)
    x ^ cBohmE a b  = (x ^ a) ^ x ^ b
    x ^ cBohm0 a    = a
+   x ^ cBohmP a b  = ( x ^ a  ,  x ^ b )
+   x ^ cBohmC a b  = ( x ^ a  ~  x ^ b )
 \end{spec}
 used in defining the logarithm.
 
@@ -617,14 +627,6 @@ Now we form the linear log as the product
 \begin{code}
 blog v e | not (v `elem` fvs e) = cBohm0 e 
 blog v e =
-{-
-     let 
-         x =  [(f,t) | (f,t) <- sites e, t == V v ]
-     in case x of
-           [(f,t)] -> -- single occurrence
-           []      -> -- does not occur
-           _       -> -- multiple occurrences
--}         
      case e of 
           a :+: b -> case (v `elem` fvs a,v `elem` fvs b) of
                         (False,True)    -> (blog v b) :*: (a :^: cA)
@@ -646,7 +648,18 @@ blog v e =
           a :&: b -> cBohmP (blog v a) (blog v b)
           V nm     -> if nm == v then c1 else cBohm0 e
 \end{code}
-
+\iffalse
+{-
+\begin{spec}
+     let 
+         x =  [(f,t) | (f,t) <- sites e, t == V v ]
+     in case x of
+           [(f,t)] -> -- single occurrence
+           []      -> -- does not occur
+           _       -> -- multiple occurrences
+\end{spec}
+-}         
+\fi
 The following function returns a list of all the variable names occurring in an expression.
 The list is returned in the order in which variables are encountered in a depth-first scan.
 \begin{code}
@@ -1017,59 +1030,92 @@ Applicative is bound up with monads, and they have stolen |<*>|. If
 I hide that, I hide monads, and can't use do notation. 
 
 \subsection{(parsing) combinators}
+
+Choice: brain-dead parsing monad.
+I don't understand the beaurocracy of instance declarations
+well enough to use it properly.
+
+Doesn't deal with input using pairing and flipping.
+To be honest, I'm not sure how how precedences
+and associativity should go with these operators.
+(This means, with expressions like | a & b | and | a ~ b |.)
+
 \begin{code}
 
 -- PARSERS.
 -- t is the token type, v the parsed value. 
-newtype Parser t v =  Parser {prun :: [t] -> [(v,[t])]}
+newtype Parser t v =  P {prun :: [t] -> [(v,[t])]}
 
-eta :: v -> Parser t v
-eta v = Parser (\ts -> [(v,ts)])
+instance Functor (Parser t) where
+  fmap f (P pr) = P (\ ts -> [ (f v, ts') | (v,ts') <- pr ts])
+
+\end{code}
+\iffalse
+{- 
+instance Applicative (Parser t) where
+  pure t = Parser (\ ts -> [(t,ts)])
+  liftA2 f a b = fby2 a b f
+
+instance Monad (Parser t) where
+  return   = eta
+  a >>= b  = Parser (\ ts-> mmul (fmap b a))
+
+-}
+\fi
+\begin{code}
+eta   :: v -> Parser t v   -- pure
+eta v = P (\ ts -> [(v,ts)])
+
 mmul :: Parser t (Parser t v) -> Parser t v
-mmul pp = Parser (\ts -> [(v,ts'') | (p,ts') <- prun pp ts, (v,ts'') <- prun p ts'] ) 
+mmul pp = P (\ ts -> [(v,ts'') | (p,ts') <- prun pp ts, (v,ts'') <- prun p ts'] ) 
 
 sat :: (t -> Bool) -> Parser t t
-sat p  = Parser f where f (t:ts) | p t  =   [(t,ts)] --   if p t then [(t,ts)] else []
-                        f _             =   []
+sat p  = P f where f (t:ts) | p t  =   [(t,ts)] 
+                   f _             =   []
 
 lit :: Eq t => t -> Parser t t
 lit t  = sat (== t)
 
 -- composes a sequence of N parsers that return things of the same type A
 -- into a parser that returns a list in A* of length N. 
-fby :: Parser t a -> Parser t [a] -> Parser t [a] 
-fby p q 
-  = Parser (\s-> [((v:vs),s'') | (v,s') <- prun p s, (vs,s'') <- prun q s' ])
+fby  :: Parser t a -> Parser t [a] -> Parser t [a] 
+fby  =  liftA2 (:)   
 
 fby2 :: Parser t a -> Parser t b -> (a -> b -> c) -> Parser t c
 fby2 p q f
-  = Parser (\s->
-              [ (f v v',s'')  | (v,s') <- prun p s
+  = P (\s->  [ (f v v',s'')  |  (v,s') <- prun p s
                               , (v',s'') <- prun q s' ])
+
+liftA2 :: (a -> b -> c) -> Parser t a -> Parser t b -> Parser t c
+liftA2 f p q = fby2 p q f 
+
 
 grdl :: Parser t a -> Parser t b -> Parser t b
 grdr :: Parser t a -> Parser t b -> Parser t a
-grdl' p q 
-  = Parser (\s-> [ (b,s'') | (_,s') <- prun p s, (b,s'') <- prun q s' ])
-grdl p q  = fby2 p q (\ _ -> id)
-grdr' p q 
-  = Parser (\s-> [ (a,s'') | (a,s') <- prun p s, (_,s'') <- prun q s' ])
-grdr p q  = fby2 p q const
 
-paren' p   =  Parser (\s-> [ (a,s''') | (_,s')   <- prun (lit Lpar) s
-                           , (a,s'')  <- prun p s'
-                           , (_,s''') <- prun (lit Rpar) s''])
+grdl' p q 
+  = P (\s-> [ (b,s'') | (_,s') <- prun p s, (b,s'') <- prun q s' ])
+grdl = liftA2 (flip const) 
+
+grdr' p q 
+  = P (\s-> [ (a,s'') | (a,s') <- prun p s, (_,s'') <- prun q s' ])
+grdr = liftA2 const
+
+paren' p   =  P (\s-> [ (a,s''')
+                      | (_,s')   <- prun (lit Lpar) s
+                      , (a,s'')  <- prun p s'
+                      , (_,s''') <- prun (lit Rpar) s''])
 paren p    =  grdl (lit Lpar) (grdr p (lit Rpar))
 
 
 alt        :: Parser t a -> Parser t a -> Parser t a
-alt p q    =  Parser (\s-> prun p s ++ prun q s)
+alt p q    =  P (\s-> prun p s ++ prun q s)
 
 alts       :: [Parser t a] -> Parser t a
-alts ps    =  Parser (\s->concat [ prun p s | p <- ps ])
+alts ps    =  P (\s->concat [ prun p s | p <- ps ])
 
 empty      :: Parser t [a]
-empty      =  Parser (\s->[([],s)]) 
+empty      =  P (\s->[([],s)]) 
 
 rep, rep1  :: Parser t a -> Parser t [a]
 rep p      =  rep1 p `alt` empty 
@@ -1128,30 +1174,32 @@ tokens (c:cs)
 
 variable, constant, atomic :: Parser Tok E
 
-variable        =  Parser p where
-                       p (Id st : ts) = [(V st,ts)]
-                       p _            = []
-constant        =  Parser p where
+variable        =  P p where
+                     p (Id st : ts)  = [(V st,ts)]
+                     p _             = []
+constant        =  P p where
                      p (Sym st : ts) = [(V st,ts)]
-                     p _            = []
+                     p _             = []
 atomic          =  variable `alt` constant `alt` paren expression
 
 additive, multiplicative, exponential, expression, discard :: Parser Tok E
-additive        =  Parser  (  \s->
+additive        =  P       (  \s->
                            [  (fo (:+:) x xs ,s')
                            |  ((x:xs),s') <-
                                 prun (repsep multiplicative (lit (Sym "+"))) s ])
-multiplicative  =  Parser  (  \s->
+multiplicative  =  P       (  \s->
                            [  (fo (:*:) x xs ,s')
                            |  ((x:xs),s') <-
                                 prun (repsep exponential (lit (Sym "*"))) s ])
-exponential     =  Parser  (  \s->
+exponential     =  P       (  \s->
                            [  (fo (:^:) x xs ,s')
                            | ((x:xs),s') <-
                                 prun (repsep atomic (lit (Sym "^"))) s ])
+-- twiddles??
+-- pairs??
 expression      =  additive
 
-discard         =  Parser (\s-> [ (fo (:<>:) x xs ,s')
+discard         =  P      (\s-> [ (fo (:<>:) x xs ,s')
                                | ((x:xs),s') <-
                                     prun (repsep atomic
                                             ((lit (Sym "!"))
@@ -1187,15 +1235,15 @@ combinators as expressions.
 \subsection{CBKIWSS'}
 
 The combinators |C|, |B|, |K|, |I| and |W| can be encoded
-as follows in our calculus.
+as expressions in our calculus.
 \begin{code}
 cC, cB, cK, cI, cI', cW, c0 :: E
-cC    = V"*" :*: cE :^: V"*"             -- M to one plus E to the E 
-cB    = cE :*: V"*" :^: V"*"             -- M to the C
-cK    = cE :*: V"0" :^: V"*"             -- 0 to the C
+cC    = cM :*: cE :^: cM             -- M to one plus E to the E 
+cB    = cE :*: cM :^: cM             -- M to the C
+cK    = cE :*: c0 :^: cM             -- 0 to the C
 -- | cI    = V"@" :^: V"0" |
-cI'   = cE :*: cE :^: V"*"             -- E to the C
-cW    = cE :*: (cE :+: cE) :^: V"*"  -- twice E to the cC
+cI'   = cE :*: cE :^: cM             -- E to the C
+cW    = cE :*: (cE :+: cE) :^: cM    -- twice E to the cC
 \end{code}
 
 The `real word' versions:
@@ -1810,7 +1858,6 @@ let t = cE :*: cC ; vec h = vc :^: vb :^: va :^: h in test $ vx :^: (vec t :&: v
 \iffalse
  test $ vx :^: ((va :^: cPair) :*: (vb :^: cE))
 --demonstrates that a ^ b = a ^ cPair :*: b ^ cE
-\fi
 
 -- demonstrates log-like behaviour of _^K.
 test $ inst_xyz $ (va :^: (cK :*: cE) :+: vb :^: (cK :*: cE)) :^: cCurry -- (va :+: vb) :^: cK
@@ -1829,3 +1876,5 @@ let  suc = c1 :^: cA :^: cC ; t = (cE :*: (suc :^: cPair) :^: cM) :^: cC in test
 let m = (cSuc :^: cE) :*: (c0 :^: cPair :^: cC) ; e = (m :^: cC) :*: (c1 :^: cPair :^: cC) in test $ vz :^: vs :^: c3 :^: c2 :^: e
 
 let a = cSuc :^: cE ; m = (cSuc :^: cE) :*: (c0 :^: cPair :^: cC) ; e = (m :^: cC) :*: (c1 :^: cPair :^: cC) in test $ vs :^: c3 :^: c2 :^: e
+
+\fi
