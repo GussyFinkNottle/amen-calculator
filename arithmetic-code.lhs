@@ -37,6 +37,8 @@ import Prelude hiding
                ,(:^:),(:*:),(:+:),(:<>:),(:&:),(:~:)
                ,pi
                )
+import Control.Applicative hiding ((<*>),empty) 
+
 infixr 8  ^   
 infixr 7  *   
 infixr 6  +   
@@ -128,12 +130,17 @@ is sent to |(0, x1, x1 + x2, x1 + x2 + x3, ... )|.
 pfs :: (a -> a -> a) -> a -> [a] -> [a]
 pfs op ze xs = pfs' xs id
                where pfs' (x:xs) b = b ze : pfs' xs (b . (op x))
+\end{code}
+|pfs| is applied only to streams, and returns a stream.
+Think of it is a stream of finite lists, namely the list of finite
+prefixes of the argumenty stream. Then we fold an operation over each list, starting
+with a constant. 
 
-
+\begin{code}
 type Endo x = x -> x
 type N x = Endo (Endo x)
 index :: N [a] -> [a] -> a
-index n         = head . n tail
+index n         = (tail ^ n) * head   -- head . n tail
 -- note index 0 is head
 
 sigma :: Endo [a -> Endo b] 
@@ -144,32 +151,35 @@ sigma = pfs (+) zero
 \end{code}
 
 Stuff related to continuations.
+Should make monad instance etc.
 \begin{code}
-
-type C x y = (x -> y) -> y
-ret :: x -> C x y
+type C y x = (x -> y) -> y
+ret :: x -> C y x
 ret = (^)
-mu  :: C (C x y) y -> C x y
-mu mm k = mm (ret k)
+mu  :: C y (C y x) -> C y x 
+-- mu mm k = mm (ret k)
+-- mu mm   = ret * mm
+mu      = ((^) *)
 {- The types |x -> C x x| and |N x| are isomorphic. -}
 {- The same combinator is used in both inverse directions! -}
 myflip :: (x -> C x x) -> N x
 myflip = flip 
 myflip' :: N x -> x -> C x x
 myflip' = flip 
+\end{code}
 
+I can't remember why I thought the below was interesting.
+The argument of mydrop is a Church numeral.
+\begin{code}
 -- any of the following type statements will do
-mydrop :: C (Endo [a]) y 
+mydrop :: C y (Endo [a]) 
 -- | mydrop :: (([a] -> [a]) -> t) -> t  |
 -- | mydrop :: (Endo [a] -> t) -> t  |
 -- | mydrop :: N [a] -> Endo [a]  |
 mydrop n  = n tail
 mydrop'   = ($ tail)
 \end{code}
-|pfs| is applied only to streams, and returns a stream.
-Think of it is a stream of finite lists, namely the list of finite
-prefixes of a stream. Then we fold an operation over each list, starting
-with a constant. 
+
 
 \subsection{Booleans}
 
@@ -298,7 +308,7 @@ cI_possible      = cEcC
 %--  cC,      cCcC,
 %--  cPair , cPaircC,
 %--    , V"~" , V "~~"   -- flip ;  rotR a b c - b c a  (store)
-%--    , V"&" , V $&~"   -- rotL. reverse exchanges 1 and 3. 
+%--    , V"&" , V $~&"   -- rotL. reverse exchanges 1 and 3. 
 \fi
 
 Now we turn to evaluation of expressions. Of course, this will be
@@ -821,8 +831,12 @@ nodups :: Eq a => [a] -> [a]
 nodups [] = []
 nodups (x:xs) = x : let xs' = nodups xs in
                     if   x `elem` xs'
-                    then filter (/= x) xs'
-                    else xs' 
+                    then del1 x xs' id   --  filter (/= x) xs'
+                    else xs'
+
+-- delete exactly one occurrence of first argument in second
+del1 c (c':cs) | c == c'  = (cs ^)    -- only invoked when c actually occurs
+del1 c (c':cs)            = \ b -> del1 c cs (b . (c' :))
 \end{code}
 
 \subsection{Some top-level commands} 
@@ -1041,6 +1055,7 @@ and associativity should go with these operators.
 (This means, with expressions like | a & b | and | a ~ b |.)
 
 \begin{code}
+-- import Control.Applicative
 
 -- PARSERS.
 -- t is the token type, v the parsed value. 
@@ -1049,12 +1064,18 @@ newtype Parser t v =  P {prun :: [t] -> [(v,[t])]}
 instance Functor (Parser t) where
   fmap f (P pr) = P (\ ts -> [ (f v, ts') | (v,ts') <- pr ts])
 
+instance Applicative (Parser t) where
+  pure t = P (\ ts -> [(t,ts)])
+  liftA2 = fby2' 
+
+instance Monad (Parser t) where
+  return   = eta
+  a >>= b  = mmul (fmap b a) --  P (\ ts-> mmul (fmap b a))
+
+
 \end{code}
 \iffalse
 {- 
-instance Applicative (Parser t) where
-  pure t = Parser (\ ts -> [(t,ts)])
-  liftA2 f a b = fby2 a b f
 
 instance Monad (Parser t) where
   return   = eta
@@ -1086,8 +1107,8 @@ fby2 p q f
   = P (\s->  [ (f v v',s'')  |  (v,s') <- prun p s
                               , (v',s'') <- prun q s' ])
 
-liftA2 :: (a -> b -> c) -> Parser t a -> Parser t b -> Parser t c
-liftA2 f p q = fby2 p q f 
+fby2' :: (a -> b -> c) -> Parser t a -> Parser t b -> Parser t c
+fby2' f p q = fby2 p q f 
 
 
 grdl :: Parser t a -> Parser t b -> Parser t b
@@ -1095,11 +1116,11 @@ grdr :: Parser t a -> Parser t b -> Parser t a
 
 grdl' p q 
   = P (\s-> [ (b,s'') | (_,s') <- prun p s, (b,s'') <- prun q s' ])
-grdl = liftA2 (flip const) 
+grdl = fby2' (flip const) 
 
 grdr' p q 
   = P (\s-> [ (a,s'') | (a,s') <- prun p s, (_,s'') <- prun q s' ])
-grdr = liftA2 const
+grdr = fby2' const
 
 paren' p   =  P (\s-> [ (a,s''')
                       | (_,s')   <- prun (lit Lpar) s
@@ -1156,6 +1177,12 @@ tokens (inp@('(':cs))
            =  Lpar : tokens cs
 tokens (inp@(')':cs)) 
            =  Rpar : tokens cs 
+tokens ('[':cs)          -- hack to allow reading what I print
+           =  id_t id cs where
+                id_t b []                   =  [Sym (b [])]
+                id_t b (']':cs)             =  Sym (b []): tokens cs 
+                id_t b (c:cs)               =  id_t (b . (c :)) cs
+
 tokens (c:cs) | is_alphabetic c
            =  id_t (c:) cs where
                 id_t b []                   =  [Id (b [])]
@@ -1166,7 +1193,6 @@ tokens (c:cs)
                 id_t b []                   =  [Sym (b [])]
                 id_t b (c:cs) | is_symch c  =  id_t (b . (c :)) cs
                 id_t b inp                  =  Sym (b []): tokens inp 
-
 \end{code}
 
 \subsection{rudimentary grammar}
@@ -1336,8 +1362,8 @@ which
 satisfies | f^cCurry x y = f (x , y) |.
 The following are alternate versions of this combinator.
 \begin{code}
-cCurry   = cK :*: (cPair :^: cA)
-cCurry'  = cB :*: (cPair :^: cM)
+cCurry'   = cK :*: (cPair :^: cA)
+cCurry    = cB :*: (cPair :^: cM)
 cCurry_demo = (vz :^: (vy :^: vx :^: cPair) :^: vf) :&: (vz :^: vy :^: vx :^: vf :^: cCurry)
 \end{code}
 Try | test $ cK :^: cCurry_demo |, then | test $ c0 :^: cCurry_demo |.
@@ -1804,13 +1830,13 @@ demoExp'    = let  d = (va :*: cPair) :+: (vb :*: cE)
 
 -- two equivalent codings                 
 demoAdd     = let  c = (va :^: cE) :+: (vb :^: cE)  
-                   d = cPair :*: V"*" :*: (c :^: cE)  -- curry c
+                   d = cPair :*: cM :*: c :^: cE      -- curry c
               in   vz :^: vy :^: vx :^: d
 demoAdd'    = let  c = (va :^: cE) :+: (vb :^: cE)
-                   d = cPair :+: (c :^: cK)             -- curry c
+                   d = cPair :+: c :^: cK             -- curry c
               in   vz :^: vy :^: vx :^: d
 
-demoNaught  = let  d = V"0" :*: V"0" :^: cE in d
+demoNaught  = let  d = c0 :*: c0 :^: cE in d
 \end{code}
 
 One can think of addition as repetition of the successor operation,
