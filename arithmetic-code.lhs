@@ -11,6 +11,7 @@
 %format <> = "\!\mathop{{}^{{}^{\cdot}}}\!"
 %format :~: = ":" ~ ":"
 
+\newcommand{\ZERO}{\!\mathop{{}^{{}^{\cdot}}}\!}
 
 
 \title{The AMEN calculator}
@@ -737,6 +738,7 @@ ffv_suggestion = "let eg n = (n * n) + n in map (base10 . eg) ff "
 Note that all terms are divisible by 2.
 (Division by two is a tricky matter...)
 
+\newpage
 \section{Displaying}
 
 \subsection{Expressions} 
@@ -1034,6 +1036,7 @@ run inp n =
 \end{code}
 \fi
 
+\newpage
 \section{Parsing}
 
 Is it even worth thinking about this?  The interpreter gives a
@@ -1252,11 +1255,11 @@ rdexp :: String -> E
 rdexp = fst . head . prun expression . tokens
 \end{code}
 
-
+\newpage
 \section{Examples} 
 
-In this section, we encode some naturally occurring
-combinators as expressions.
+This section codes some naturally occurring
+combinators. 
 
 \subsection{CBKIWSS'}
 
@@ -1272,7 +1275,7 @@ cI'   = cE :*: cE :^: cM             -- E to the C
 cW    = cE :*: (cE :+: cE) :^: cM    -- twice E to the cC
 \end{code}
 
-The `real word' versions:
+The `real-word' versions:
 \begin{code}
 combC        = (*) * (^) ^ (*)             --  |flip|, transpose. 
 combB        = (^) * (*) ^ (*)             --  |(.)|, composition. |(*) ^ combC| 
@@ -1282,27 +1285,36 @@ combW        = (^) * ((^) + (^)) ^ (*)     --  diagonalisation. |((^) + (^)) ^ c
 naughtiness  = error "Naughty!"
 \end{code}
 
-
-As for |S|, after a little playing around, another combinator emerges.  This is |S'|,
-where |S a b| (the normal S combinator) is |W (S' a b)|.
+With |W|, there are several ways to define |S|.  One is by brute force: first define a linearised version |S'| with an extra argument: 
 \begin{spec} 
     S' a b c1 c2 =    a c1 (b c2)
 \end{spec}
+Then define |S a b| (the normal S combinator) to be |W (S' a b)|.
 
 It turns out that
 \begin{spec}
     S'  =  (*) * ((*) *)
 \end{spec}
+which can also be written | (*) ^ (1 + (*)) |.
+After a little calculation, we get something like:
+\[
+(\times) \times (\times)^{(\times)} \times (\times) \times
+{((\wedge) \times {((\wedge) + (\wedge))}^{(\times)})}^{(\wedge)}
+\]
+% [*] * [*] ^ [*] * [*] * ([^] * ([^] + [^]) ^ [*]) ^ [^]
+It cannot be controversial that this expression is less than entirely gorgeous.
+B{\"o}hm's theory of logarithms gives a much nicer analysis of the |S| combinator (and it's
+relatives).
 
-In particular, we have the following remarkable equations:
+Despite its brutality, the combinator |S'| is not without interest: 
 \begin{spec}
-  S     = S' * (*) * (W ^ (^))
+  S     = S' * (*) * (W ^ (^))      -- $S' \times W^{C}$
   S'    = S' (*)
   C     = S' (^) 
-  B     = S' (^) (*)           = (*) ^ C
-  I     = S' (^) (^)           = (^) ^ C
-  K     = S' (^) (<>)          = (<>) ^ C
-  W     = S' (^) ((^) + (^))   = ((^) + (^)) ^ C
+  B     = S' (^) (*)           -- $(\times) ^ C$
+  I     = S' (^) (^)           -- $(\wedge) ^ C$
+  K     = S' (^) (<>)          -- $(\ZERO)  ^ C$
+  W     = S' (^) ((^) + (^))   -- $((\wedge) + (\wedge)) ^ C$
   S' 1  = (*)  
 \end{spec}
 
@@ -1545,12 +1557,17 @@ cR, cR_var     :: E
 cR             = cC :^: cC 
 cR_var         = (V "^") :*: (V "^") :*: (V "*") :^: (V "*")  -- a variant
 
--- so lets give an alias for left rotation
+-- an alias for left rotation. Could call it Load? (Load par3 to top)
+-- abc to cab
 cL          :: E
 cL          = cPair
+-- an alias for right rotation. Could call it Store? (Store top as par3)
+-- abc to bca
+cR          :: E
+cR          = cC :^: cC 
 
-cR_demo  = test $ vc :^: vb :^: va :^: cR
-cL_demo  = test $ vc :^: vb :^: va :^: cL
+cR_demo  = vc :^: vb :^: va :^: cR
+cL_demo  = vc :^: vb :^: va :^: cL
 \end{code}
 It has a cousin, that rotates in the other direction.
 This is actually the pairing combinator.
@@ -1640,7 +1657,7 @@ Peirce's law: | ((a->b) -> a) -> a |
 is interesting because it is a formula of minimal logic.
 It involves only the arrow, and not |0|.
 \emph{Yet} you can prove excluded
-middle $a or not a$ from it, where negation is relativised to a generic
+middle |a or not a| from it, where `negation' is relativised to a generic
 type $r$, as |not a = a -> r|.  So when defining something,
 one has unrestricted access to these two cases.
 
@@ -1655,9 +1672,9 @@ negation, \ie{} |~(~A) = A|.
 To suppose the negation of Peirce's law leads
 to an absurdity. (We don't need efq for this.)
 \begin{spec}
-      ~Peirce   =   ~a & ((a->b)->a)
-                =>  ~a & ~(a->b)
-                =   ~a & ~b & a 
+      ~Peirce   =   ~a  &  ((a->b)->a)
+                =>  ~a  &  ~(a->b)
+                =   ~a  &  ~b & a 
 \end{spec}
 We cannot hope to prove Peirce's law, but we might expect to
 prove it's transform by the continuation monad |((a -> CT b) -> CT a) -> CT a|,
@@ -1775,13 +1792,19 @@ cO n = let x = cOzero : [cOsuc t | t <- x ] in x !! n
 
 
 |sgbar|, or exponentiation to base zero, is the function which is 1 at
-0, and 0 everywhere else.  In other words, it is the characteristic
-function of the zero numbers.  
+0, and only at 0.  On numbers, it is the characteristic
+function of those that are zero. 
 \begin{code}
-sgbar = ((<>) ^)
-cSgbar = c0 :^: cE
+sgbar  :: C b2 (a -> Endo b1)      -- eg C x x where x = N b.
+sgbar  = ((<>) ^)                  -- real-world
+
+cSgbar :: E
+cSgbar = c0 :^: cE                -- code
+
 sgbar' :: Endo (N a)
 sgbar' n s z = n (const z) (s z)
+
+cSgbar' :: E
 cSgbar' = let v1 = vz :^: vs
               ef = vz :^: cK
           in (blog "n" (blog "s" (blog "z" (v1 :^: ef :^: vn ))))
@@ -1791,9 +1814,12 @@ Using |sgbar|, we can define |sg|, which is 0
 at 0, and 1 elsewhere (the sign function, or the characteristic
 function of the non-zero numbers).
 \begin{code}
+sg :: ((a1 -> Endo b2) -> (a2 -> Endo b3) -> c) -> c
 sg = sgbar * sgbar
+
 sg' :: Endo (N a)
 sg' n s z   = n (const (s z)) z 
+
 cSg  = cSgbar :*: cSgbar
 cSg' = let v1 = vz :^: vs
            ef = v1 :^: cK
