@@ -1563,8 +1563,6 @@ cL          :: E
 cL          = cPair
 -- an alias for right rotation. Could call it Store? (Store top as par3)
 -- abc to bca
-cR          :: E
-cR          = cC :^: cC 
 
 cR_demo  = vc :^: vb :^: va :^: cR
 cL_demo  = vc :^: vb :^: va :^: cL
@@ -1667,7 +1665,7 @@ a certain monad, called `the Peirce monad' by Escardo\&co.
 When `true' |0| (including efq) and hence true negation is
 added, to minimal logic, Peirce's law implies not just
 excluded middle, but full classical logic with involutive
-negation, \ie{} |~(~A) = A|. 
+negation, \ie{} $\neg(\neg a) = a$. 
 
 To suppose the negation of Peirce's law leads
 to an absurdity. (We don't need efq for this.)
