@@ -591,18 +591,18 @@ at least by me.
 This code constructs the \logarythm{} of an expression
 with respect to a variable name. 
 
-B{\"o}hm's combinators
+B{\"o}hm's combinators. Check carefully!!
 \begin{code}
-cBohmA a b = let g = a :^: cE :+: b :^: cE in 
-             let curry  g = cPair :+: g :^: cK in   -- Bohm's original
-             let curry' g = cPair :*: cM :*: (g :^: cE)  -- another without additive apparatus 
-             in curry' (a :^: cE :+: b :^: cE)
-cBohmE a b = a :*: cPair :+: b :*: cE
-cBohmM a b = a :+: b
-cBohm0 a   = c0 :~: a
-cBohm0' a  = c0 :*: (a :^: cE)
-cBohmC a b = a :+: b :*: cC          -- REALLY
-cBohmP a b = a :*: cE :+: b :*: cE   -- REALLY??
+cBohmA a b   = let curry  g = cPair :+: g :^: cK in        -- additive
+               let curry' g = cPair :*: cM :*: (g :^: cE)  -- multiplicative
+               in curry' (a :^: cE :+: b :^: cE)
+cBohmE  a b  = a :*: cPair :+: b :*: cE
+cBohmE' a b  = b :*: cC :+: a :*: cE
+cBohmM  a b  = a :+: b
+cBohm0  a    = c0 :~: a
+cBohm0' a    = c0 :*: (a :^: cE)
+cBohmC  a b  = a :+: b :*: cE          -- I had cC instead of cE!
+cBohmP  a b  = a :*: cE :+: b :*: cE   -- pairing
 \end{code}
 These have the crucial properties
 \begin{spec}
@@ -654,7 +654,7 @@ blog v e =
                         (True,False) -> case a of
                                          V v  -> b
                                          _    -> blog v a :*: b
-                        _            -> cBohmE (blog v a) (blog v b)
+                        _            -> cBohmE' (blog v a) (blog v b)
           a :~: b -> cBohmC (blog v a) (blog v b)
           a :&: b -> cBohmP (blog v a) (blog v b)
           V nm     -> if nm == v then c1 else cBohm0 e
