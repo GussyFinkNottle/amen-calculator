@@ -1,7 +1,13 @@
 # amen-calculator #
-A program to perform and display calculations with arithmetical combinators, based 
-on the arithmetic (addition, multiplication, exponentiation
-and nought) of Church numerals.
+The main program here performs and display calculations with arithmetical combinators, based 
+on "elementary" arithmetic of Church numerals. A church numeral is in essence a 
+binary operation, that takes a "zero" and a "successor" to be iterated. 
+However the novelty here is that we consider these binary operations 
+to be themselves "numbers". So we can have things like (+) * (*) * (^) * (0),
+whereas the only "real" numbers are 0, 0 ^ 0, 0 ^ 0 + 0 ^ 0, etc.
+
+(There is also a tar file about things pertaining to extensional equality 
+which is almost completely unrelated. This should maybe  get its own repository.)
 
 You might also use the program to do your shopping, though it lacks
 some amenities, (:-) 
