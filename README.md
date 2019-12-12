@@ -6,9 +6,6 @@ However the novelty here is that we consider these binary operations
 to be themselves "numbers". So we can have things like (+) * (*) * (^) * (0),
 whereas the only "real" numbers are 0, 0 ^ 0, 0 ^ 0 + 0 ^ 0, etc.
 
-(There is also a tar file about things pertaining to extensional equality 
-which is almost completely unrelated. This should maybe  get its own repository.)
-
 You might also use the program to do your shopping, though it lacks
 some amenities, (:-) 
 eg. convenient numerical display and input. It is more useful for

@@ -160,7 +160,9 @@ ret = (^)
 mu  :: C y (C y x) -> C y x 
 -- mu mm k = mm (ret k)
 -- mu mm   = ret * mm
-mu      = ((^) *)
+mu      = (^) ^ (*)    -- ((^) * (^)) ^ flip 
+mp :: (a -> b) -> C y a -> C y b
+mp =  (*) * (*)
 {- The types |x -> C x x| and |N x| are isomorphic. -}
 {- The same combinator is used in both inverse directions! -}
 myflip :: (x -> C x x) -> N x
@@ -196,7 +198,7 @@ andB  ::  I2 (I2 a b c) (I2 d b a) (I2 d b c)
 posB  ::  I2 a b a
 nilB  ::  I2 a b b
 impB  a b p n  =  a (b p n) p
-orB   a b p n  =  a p (b p n)  -- the same as numerical addition
+orB   a b p n  =  a p (b p n)  -- the same as numerical addition b + a
 andB  a b p n  =  a (b p n) n
 posB  =  const 
 nilB  =  zero
@@ -359,7 +361,7 @@ a <*> b = case a of
                            _    :^: V"0"  ->  a
                            _              ->  a :*: b 
 a <^> b = case b of
-          V"0"           ->  b :^: b
+          V"0"           ->  V"1"  -- b :^: b
           V"1"           ->  a
           b1 :+: b2      ->  (a <^> b1) <*> (a <^> b2)
           b1 :*: b2      ->  (a <^> b1) <^> b2
@@ -1587,7 +1589,7 @@ flip' = flip flip (flip flip)  (flip flip)
 flip'' = flip' flip' (flip' flip')  (flip' flip') 
 \end{code}
 
-\subsection{Continuation transform}
+\subsection{Continuations} 
 
 The function |^| which takes |a| to |a ^| pops up everywhere when playing
 with arithmetical combinators.
@@ -1595,20 +1597,24 @@ It provides the basic means of interchanging the positions
 of variables:
 | a^b = b^(a^) = b^a^(^) |.
 
-On the topic of the continuation transform, for a fixed result type
-|R = ()|, the type-transformer |CT|
+The continuation monad has a particularly simple expression in arithmetical
+terms:
 \begin{code}
-type CT a = (a -> ()) -> ()
+cm_ret   = (^)                -- $\eta$
+cm_join  = (^) ^ (*)          -- $\mu$
+cm_map   = (*) * (*)
 \end{code}
-is the well known continuation monad.
+
+It doesn't matter what the `result type' is.  Letting it be |()|,
+the functor can be defined as follows.
+\begin{code}
+type Cont a = (a -> ()) -> ()
+\end{code}
+
+
+\iffalse
 The action on maps is
 \begin{code}
-map_CT :: (a -> b) -> CT a -> CT b
-map_CT f cta k = cta (k . f)
-map_CT'1 f cta k = cta (f * k)
-map_CT'2 f cta   = (f *) * cta
-map_CT' f       = ((f *) *)
-
 cmap_CT :: E
 cmap_CT = cM :*: cM
 \end{code}
@@ -1620,6 +1626,8 @@ join        :: CT (CT a) -> CT a
 return a b  =  a ^ b            -- ie. |return = (^)|
 f `join` s  =  f (return s)     -- ie. |join = ((^)*)|
 \end{spec}
+\fi
+Here's their code.
 \begin{code}
 cRet, cMu, cMap  :: E
 cRet = cE
@@ -1632,7 +1640,9 @@ We can simply define the bind operator from join and map.
 cBind :: E
 cBind = let arg = vm :^: vc :^: cMap in blog "m" (blog "c" (arg :^: cMu))
 \end{code}
-
+Sadly, it's not very enchanting:
+\[  (\wedge) \times (\wedge) \times (\wedge) \times (\times) ^ {(\times)} \times ((\times) \times (\wedge))^{(\times)}
+\]
 \iffalse
 The bind operator |>>=| is not quite as simple.
 \begin{spec}
@@ -1645,7 +1655,6 @@ The bind operator |>>=| is not quite as simple.
  f^((>>=)^C)  = (f^(*))^(*) * (^)^(*)
  f^((>>=)^C)  = f^((*)*(*)) * (^)^(*)
 \end{spec}
-\fi
 
 You may be interested in fancy control operators (like `abort'), and
 flirtations with classical logic.
@@ -1670,9 +1679,9 @@ negation, \ie{} $\neg(\neg a) = a$.
 To suppose the negation of Peirce's law leads
 to an absurdity. (We don't need efq for this.)
 \begin{spec}
-      ~Peirce   =   ~a  &  ((a->b)->a)
-                =>  ~a  &  ~(a->b)
-                =   ~a  &  ~b & a 
+      not Peirce   =   not a  &  ((a->b)->a)
+                   =>  not a  &  not (a->b)
+                   =   not a  &  not b & a 
 \end{spec}
 We cannot hope to prove Peirce's law, but we might expect to
 prove it's transform by the continuation monad |((a -> CT b) -> CT a) -> CT a|,
@@ -1713,6 +1722,7 @@ It may be interesting to point out that
 $(a,b) = a^{[\wedge]} \times b^{[\wedge]} = \eta a \times \eta b$
 where $\eta$ is the unit of CT.
 
+\fi
 
 \subsection{Peano numerals}
 
